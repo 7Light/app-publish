@@ -47,6 +47,11 @@ public class VerifyService {
         return output;
     }
 
+    public boolean execCmdAndContainsMessage(String cmd, String message) throws IOException, InterruptedException {
+        String ret = execCmd(cmd);
+        return ret.contains(message);
+    }
+
     /**
      * verify rpm files
      *

@@ -10,9 +10,7 @@ public class FilePO {
     private String parentDir = "";
     private String url;
     private String sha256;
-
     private String publishResult;
-
     private String verifyResult;
 
     public String getPublishResult() {

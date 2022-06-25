@@ -12,6 +12,8 @@ public class PublishPO {
     private String fileKey;
     private String tempDir;
     private String conflict = "skip";//normal/skip/overwrite/error
+    private String uploadType;//obs/others
+    private String obsUrl;
     List<FilePO> files;
     private List<RepoIndex> repoIndexList;
 
@@ -77,5 +79,21 @@ public class PublishPO {
 
     public void setConflict(String conflict) {
         this.conflict = conflict;
+    }
+
+    public String getUploadType() {
+        return uploadType;
+    }
+
+    public void setUploadType(String uploadType) {
+        this.uploadType = uploadType;
+    }
+
+    public String getObsUrl() {
+        return obsUrl;
+    }
+
+    public void setObsUrl(String obsUrl) {
+        this.obsUrl = obsUrl;
     }
 }
