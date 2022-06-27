@@ -76,8 +76,8 @@ public class VerifyService {
      */
     public boolean checksum256Verify(String filePath, String sha256) {
         try {
-            String execCmdSha256 = execCmd("sha256sum " + filePath + " | awk '{ print $1 }'");
-            if (sha256.contains(execCmdSha256)) {
+            String execCmdSha256 = execCmd("sha256sum " + filePath);
+            if (sha256.contains(execCmdSha256.substring(0, 64))) {
                 return true;
             } else {
                 log.info("execCmdSha256:" + execCmdSha256 + "\tsha256:" + sha256);
