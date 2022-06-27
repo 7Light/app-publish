@@ -93,7 +93,9 @@ public class PublishVerifyController {
                 String verifyMessage = verify(tempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
                     file.setVerifyResult(verifyMessage);
-                    continue;
+                    if (!"no signatures".equals(verifyMessage)) {
+                        continue;
+                    }
                 } else {
                     file.setVerifyResult("success");
                 }
