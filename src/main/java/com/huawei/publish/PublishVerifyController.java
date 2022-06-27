@@ -139,6 +139,9 @@ public class PublishVerifyController {
     }
 
     private String verify(String tempDirPath, FilePO file, String fileName) throws IOException, InterruptedException {
+        if (fileName.endsWith(".sha256")) {
+            return "";
+        }
         if ("asc".equals(file.getVerifyType())) {
             if (!verifyService.fileVerify(tempDirPath + fileName)) {
                 return fileName + " digests signatures not OK.";
