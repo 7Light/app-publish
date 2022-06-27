@@ -73,8 +73,8 @@ public class PublishVerifyController {
                 if ("obs".equals(publishPO.getUploadType())) {
                     //TODO
                     exists = !verifyService.execCmdAndContainsMessage("obsutil ls " +
-                            (publishPO.getObsUrl() + file.getTargetPath() + "/" + file.getName())
-                                    .replace("//", "/"), "is: 0B");
+                            publishPO.getObsUrl() + (file.getTargetPath() + "/" + file.getName())
+                            .replace("//", "/"), "is: 0B");
                 } else {
                     File targetFile = new File(file.getTargetPath() + "/" + file.getName());
                     exists = targetFile.exists();
@@ -100,7 +100,7 @@ public class PublishVerifyController {
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
                     uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + tempDirPath
-                            + fileName + " " + (publishPO.getObsUrl() + file.getTargetPath() + "/" + file.getName())
+                            + fileName + " " + publishPO.getObsUrl() + (file.getTargetPath() + "/" + file.getName())
                             .replace("//", "/"), "Upload successfully");
                 } else {
                     File targetPathDir = new File(file.getTargetPath());
