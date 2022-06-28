@@ -6,6 +6,7 @@ import com.huawei.publish.model.PublishResult;
 import com.huawei.publish.model.RepoIndex;
 import com.huawei.publish.service.FileDownloadService;
 import com.huawei.publish.service.VerifyService;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -26,6 +27,7 @@ import java.util.Map;
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
+    private static Logger log = Logger.getLogger(PublishVerifyController.class);
     @Autowired
     private FileDownloadService fileDownloadService;
     private VerifyService verifyService;
@@ -39,6 +41,7 @@ public class PublishVerifyController {
     public Map<String, Object> heartbeat() {
         Map<String, Object> result = new HashMap<>();
         result.put("result", "success");
+        log.info("heartbeat");
         return result;
     }
 
