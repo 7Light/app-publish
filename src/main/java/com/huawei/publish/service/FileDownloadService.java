@@ -29,7 +29,6 @@ public class FileDownloadService {
             GetMethod getMethod = new GetMethod(url);
             client.executeMethod(getMethod);
             InputStream is = getMethod.getResponseBodyAsStream();
-
             int cache = 10 * 1024;
             FileOutputStream fileOut = new FileOutputStream(dir + "/" + fileName);
             byte[] buffer = new byte[cache];
