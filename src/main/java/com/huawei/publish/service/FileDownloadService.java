@@ -56,8 +56,10 @@ public class FileDownloadService {
             GetMethod getMethod = new GetMethod(url);
             client.executeMethod(getMethod);
             String body = getMethod.getResponseBodyAsString();
+            if (getMethod.getStatusCode() == 200) {
+                return body;
+            }
             log.info("getContent:" + body);
-            return body;
         } catch (Exception e) {
             log.error(e.getMessage());
         }
