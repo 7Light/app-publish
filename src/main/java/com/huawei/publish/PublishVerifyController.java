@@ -89,7 +89,7 @@ public class PublishVerifyController {
                 String fileName = file.getName();
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
                     fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
-                    if (!fileName.endsWith(".sha256") && fileName.endsWith(".asc")) {
+                    if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
                         fileDownloadService.downloadHttpUrl(file.getUrl() + ".sha256", tempDirPath,
                                 fileName + ".sha256");
                     }
