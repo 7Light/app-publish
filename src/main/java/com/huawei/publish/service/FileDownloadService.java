@@ -25,6 +25,7 @@ public class FileDownloadService {
      */
     public void downloadHttpUrl(String url, String dir, String fileName) {
         try {
+            log.info("downloadHttpUrl:" + url);
             File dirFile = new File(dir);
             if (!dirFile.exists()) {
                 dirFile.mkdirs();
@@ -49,11 +50,14 @@ public class FileDownloadService {
     }
 
     public String getContent(String url) {
+        log.info("getContent:" + url);
         try {
             HttpClient client = new HttpClient();
             GetMethod getMethod = new GetMethod(url);
             client.executeMethod(getMethod);
-            return getMethod.getResponseBodyAsString();
+            String body = getMethod.getResponseBodyAsString();
+            log.info("getContent:" + body);
+            return body;
         } catch (Exception e) {
             log.error(e.getMessage());
         }
