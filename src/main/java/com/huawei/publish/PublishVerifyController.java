@@ -67,7 +67,7 @@ public class PublishVerifyController {
             if (!StringUtils.isEmpty(tempDirPath)) {
                 File tempDir = new File(tempDirPath);
                 if (!tempDir.exists()) {
-                    verifyService.execCmd("mkdir " + tempDirPath);
+                    verifyService.execCmd("mkdir -p" + tempDirPath);
                 }
             }
             boolean deleteTemp = true;
@@ -90,8 +90,7 @@ public class PublishVerifyController {
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
                     fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
-                        fileDownloadService.downloadHttpUrl(file.getUrl() + ".sha256", tempDirPath,
-                                fileName + ".sha256");
+                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256"));
                     }
                 } else {
                     deleteTemp = false;
@@ -111,6 +110,7 @@ public class PublishVerifyController {
                     uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + tempDirPath
                             + fileName + " " + publishPO.getObsUrl() + (file.getTargetPath() + "/" + file.getName())
                             .replace("//", "/"), "Upload successfully");
+
                 } else {
                     File targetPathDir = new File(file.getTargetPath());
                     if (!targetPathDir.exists()) {
@@ -164,9 +164,11 @@ public class PublishVerifyController {
                 return fileName + " digests signatures not OK.";
             }
         }
-        String sha256 = verifyService.execCmd("cat " + tempDirPath + fileName + ".sha256");
-        if (!sha256.contains("No such file or directory")) {
-            file.setSha256(sha256);
+        if (StringUtils.isEmpty(file.getSha256())) {
+            String sha256 = verifyService.execCmd("cat " + tempDirPath + fileName + ".sha256");
+            if (!sha256.contains("No such file or directory")) {
+                file.setSha256(sha256);
+            }
         }
         if (!StringUtils.isEmpty(file.getSha256())) {
             if (!verifyService.checksum256Verify(tempDirPath + fileName, file.getSha256())) {

@@ -1,7 +1,9 @@
 package com.huawei.publish.service;
 
+import com.huawei.publish.PublishVerifyController;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -13,6 +15,8 @@ import java.io.InputStream;
  */
 @Component
 public class FileDownloadService {
+
+    private static Logger log = Logger.getLogger(PublishVerifyController.class);
 
     /**
      * @param url      downloadUrl
@@ -40,8 +44,19 @@ public class FileDownloadService {
             fileOut.flush();
             fileOut.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
+    }
 
+    public String getContent(String url) {
+        try {
+            HttpClient client = new HttpClient();
+            GetMethod getMethod = new GetMethod(url);
+            client.executeMethod(getMethod);
+            return getMethod.getResponseBodyAsString();
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+        return "";
     }
 }
