@@ -67,7 +67,7 @@ public class PublishVerifyController {
             if (!StringUtils.isEmpty(tempDirPath)) {
                 File tempDir = new File(tempDirPath);
                 if (!tempDir.exists()) {
-                    verifyService.execCmd("mkdir -p" + tempDirPath);
+                    verifyService.execCmd("mkdir -p " + tempDirPath);
                 }
             }
             boolean deleteTemp = true;
@@ -88,7 +88,7 @@ public class PublishVerifyController {
                 }
                 String fileName = file.getName();
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
-                    fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
+                    fileDownloadService.wgetFile(file.getUrl(), tempDirPath, fileName);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
                         file.setSha256(fileDownloadService.getContent(file.getUrl() + fileName + ".sha256"));
                     }

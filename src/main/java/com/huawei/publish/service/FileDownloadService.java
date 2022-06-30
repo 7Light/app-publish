@@ -4,10 +4,12 @@ import com.huawei.publish.PublishVerifyController;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -17,6 +19,13 @@ import java.io.InputStream;
 public class FileDownloadService {
 
     private static Logger log = Logger.getLogger(PublishVerifyController.class);
+
+    @Autowired
+    VerifyService verifyService;
+
+    public void wgetFile(String url, String dir, String fileName) throws IOException, InterruptedException {
+        verifyService.execCmd("wget --no-check-certificate -P " + dir + " " + url + fileName);
+    }
 
     /**
      * @param url      downloadUrl
