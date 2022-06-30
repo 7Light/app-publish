@@ -88,7 +88,8 @@ public class PublishVerifyController {
                 }
                 String fileName = file.getName();
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
-                    fileDownloadService.wgetFile(file.getUrl(), tempDirPath, fileName);
+                    verifyService.execCmd("wget --no-check-certificate -P " + tempDirPath
+                            + " " + file.getUrl() + fileName);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
                         file.setSha256(fileDownloadService.getContent(file.getUrl() + fileName + ".sha256"));
                     }
