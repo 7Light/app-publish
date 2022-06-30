@@ -90,7 +90,7 @@ public class PublishVerifyController {
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
                     fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
-                        file.setSha256(fileDownloadService.getContent(file.getUrl() + fileName + ".sha256"));
+                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256"));
                     }
                 } else {
                     deleteTemp = false;
