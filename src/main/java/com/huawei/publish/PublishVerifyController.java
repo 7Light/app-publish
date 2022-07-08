@@ -74,7 +74,6 @@ public class PublishVerifyController {
             for (FilePO file : files) {
                 boolean exists = false;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    //TODO
                     exists = !verifyService.execCmdAndContainsMessage("obsutil ls " +
                             publishPO.getObsUrl() + (file.getTargetPath() + "/" + file.getName())
                             .replace("//", "/"), "is: 0B");
