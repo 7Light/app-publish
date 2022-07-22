@@ -14,6 +14,7 @@ public class PublishPO {
     private String conflict = "skip";//normal/skip/overwrite/error
     private String uploadType;//obs/others
     private String obsUrl;
+    private String authorization;
     List<FilePO> files;
     private List<RepoIndex> repoIndexList;
 
@@ -95,5 +96,13 @@ public class PublishPO {
 
     public void setObsUrl(String obsUrl) {
         this.obsUrl = obsUrl;
+    }
+
+    public String getAuthorization() {
+        return authorization;
+    }
+
+    public void setAuthorization(String authorization) {
+        this.authorization = authorization;
     }
 }

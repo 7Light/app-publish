@@ -87,9 +87,10 @@ public class PublishVerifyController {
                 }
                 String fileName = file.getName();
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
-                    fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
+                    String authorization = publishPO.getAuthorization();
+                    fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName, authorization);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
-                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256"));
+                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256", authorization));
                     }
                 } else {
                     deleteTemp = false;
