@@ -66,6 +66,7 @@ public class PublishVerifyController {
             if (!tempDir.exists()) {
                 verifyService.execCmd("mkdir " + tempDirPath);
             }
+            String updateKey = System.getenv("UPDATE_KEY");
             for (FilePO file : files) {
                 File targetFile = new File(file.getTargetPath() + "/" + file.getName());
                 boolean exists = targetFile.exists();
@@ -86,7 +87,9 @@ public class PublishVerifyController {
                 if (!targetPathDir.exists()) {
                     targetPathDir.mkdirs();
                 }
-                verifyService.execCmd("mv " + tempDirPath + "/" + fileName + " " + file.getTargetPath() + "/" + fileName);
+                verifyService.execCmd("scp -i " + updateKey + " -o StrictHostKeyChecking=no " + tempDirPath + "/"
+                    + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/"
+                    + fileName);
                 if (exists) {
                     file.setPublishResult("cover");
                 } else {
@@ -94,12 +97,13 @@ public class PublishVerifyController {
                 }
             }
             verifyService.execCmd("rm -rf " + tempDirPath);
-
             if (!CollectionUtils.isEmpty(publishPO.getRepoIndexList())) {
                 for (RepoIndex repoIndex : publishPO.getRepoIndexList()) {
                     if (repoIndex != null) {
                         if ("createrepo".equals(repoIndex.getIndexType())) {
-                            verifyService.execCmd("createrepo -d " + repoIndex.getRepoPath());
+                            verifyService.execCmd("ssh -i "+ updateKey + " -o StrictHostKeyChecking=no root@"
+                                + publishPO.getRemoteRepoIp() + " && cd " +  repoIndex.getRepoPath()
+                                + " && createrepo -d ");
                         }
                     }
                 }

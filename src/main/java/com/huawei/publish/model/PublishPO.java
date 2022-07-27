@@ -14,6 +14,15 @@ public class PublishPO {
     private String conflict = "skip";//normal/skip/overwrite/error
     List<FilePO> files;
     private List<RepoIndex> repoIndexList;
+    private String remoteRepoIp;
+
+    public String getRemoteRepoIp() {
+        return remoteRepoIp;
+    }
+
+    public void setRemoteRepoIp(String remoteRepoIp) {
+        this.remoteRepoIp = remoteRepoIp;
+    }
 
     public String getGpgKeyUrl() {
         return gpgKeyUrl;
