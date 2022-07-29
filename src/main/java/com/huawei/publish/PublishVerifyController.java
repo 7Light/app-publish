@@ -64,7 +64,7 @@ public class PublishVerifyController {
         try {
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
-                verifyService.execCmd("mkdir " + tempDirPath);
+                verifyService.execCmd("mkdir -p " + tempDirPath);
             }
             String updateKey = System.getenv("UPDATE_KEY");
             for (FilePO file : files) {

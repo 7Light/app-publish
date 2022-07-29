@@ -31,7 +31,10 @@ public class FileDownloadService {
             InputStream is = getMethod.getResponseBodyAsStream();
 
             int cache = 10 * 1024;
-            FileOutputStream fileOut = new FileOutputStream(dir + "/" + fileName);
+            if (!dir.endsWith("/")) {
+                dir = dir + "/";
+            }
+            FileOutputStream fileOut = new FileOutputStream(dir + fileName);
             byte[] buffer = new byte[cache];
             int ch = 0;
             while ((ch = is.read(buffer)) != -1) {
