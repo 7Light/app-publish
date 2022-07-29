@@ -11,6 +11,7 @@ publish verify
         "fileKey":{fileKey},
         "tempDir":{tempDir},
         "conflict":{normal/skip/overwrite/error},
+        "remoteRepoIp":{remoteRepoIp},
         "files":[{
             "name":{fileName},
             "size":{fileSize},
