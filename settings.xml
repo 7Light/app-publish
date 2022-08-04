@@ -9,6 +9,7 @@
         <mirrors>
             <mirror>
                 <id>official</id>
+                <mirrorOf>central</mirrorOf>
                 <url>https://repo.maven.apache.org/maven2</url>
             </mirror>
         </mirrors>

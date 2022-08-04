@@ -4,6 +4,11 @@ FROM ubuntu:xenial
 USER root
 ENV USER root
 
+# app-publish
+RUN git clone -b open-euler https://github.com/7Light/app-publish.git
+WORKDIR /app-publish
+RUN mvn clean install
+
 RUN apt -y update \
      && apt install -y wget \
      && apt install -y git \
@@ -22,10 +27,7 @@ ENV CLASSPATH .:${JAVA_HOME}/lib:${JRE_HOME}/lib
 ENV PATH ${JAVA_HOME}/bin:$PATH
 ENV UPDATE_KEY=""
 
- # app-publish
-RUN git clone -b open-euler https://github.com/7Light/app-publish.git
-WORKDIR /app-publish
-RUN mvn clean install -s settings.xml
+
 WORKDIR /usr/local
 RUN touch entrypoint.sh
 RUN echo "#!/bin/bash\nchmod 600 /app-publish/privatekey/id_rsa\njava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" >>  /usr/local/entrypoint.sh
