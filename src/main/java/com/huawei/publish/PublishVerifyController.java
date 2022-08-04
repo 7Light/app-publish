@@ -62,6 +62,7 @@ public class PublishVerifyController {
         List<FilePO> files = publishPO.getFiles();
         String tempDirPath = publishPO.getTempDir();
         try {
+            verifyService.execCmd("chmod 600 /app-publish/privatekey/id_rsa" + tempDirPath);
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
                 verifyService.execCmd("mkdir -p " + tempDirPath);
