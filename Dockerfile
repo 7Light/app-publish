@@ -4,6 +4,7 @@ FROM ubuntu:xenial
 USER root
 ENV USER root
 
+RUN chmod 600 /app-publish/privatekey/id_rsa
 RUN apt -y update \
     && apt install -y wget \
     && apt install -y git \
@@ -26,5 +27,5 @@ ENV UPDATE_KEY=""
 RUN git clone -b open-euler https://github.com/7Light/app-publish.git
 WORKDIR /app-publish
 RUN mvn clean install -s settings.xml
-RUN chmod 600 /app-publish/privatekey/id_rsa
+
 ENTRYPOINT ["java","-jar","/root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar"]
