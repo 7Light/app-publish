@@ -8,38 +8,8 @@
     </proxies>
         <mirrors>
             <mirror>
-                <id>alimaven</id>
-                <mirrorOf>central</mirrorOf>
-                <url>https://maven.aliyun.com/nexus/content/groups/public/</url>
+                <id>official</id>
+                <url>https://repo.maven.apache.org/maven2</url>
             </mirror>
         </mirrors>
-    <profiles>
-        <profile>
-            <id>kunpeng</id>
-            <repositories>
-                <repository>
-                    <id>kunpengmaven</id>
-                    <name>kunpeng maven</name>
-                    <url>https://repo.huaweicloud.com/kunpeng/maven/</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                    <snapshots>
-                        <enabled>true</enabled>
-                    </snapshots>
-                </repository>
-                <repository>
-                    <id>huaweicloud</id>
-                    <name>huaweicloud maven</name>
-                    <url>https://repo.huaweicloud.com/repository/maven/</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                </repository>
-            </repositories>
-        </profile>
-    </profiles>
-    <activeProfiles>
-        <activeProfile>kunpeng</activeProfile>
-    </activeProfiles>
 </settings>
