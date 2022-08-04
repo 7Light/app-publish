@@ -4,7 +4,6 @@ FROM ubuntu:xenial
 USER root
 ENV USER root
 
-RUN chmod 600 /app-publish/privatekey/id_rsa
 # RUN apt -y update \
 #     && apt install -y wget \
 #     && apt install -y git \
