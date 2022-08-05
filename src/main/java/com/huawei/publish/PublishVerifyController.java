@@ -86,7 +86,7 @@ public class PublishVerifyController {
                 if (!targetPathDir.exists()) {
                     targetPathDir.mkdirs();
                 }
-                verifyService.execCmd("scp -i /app-publish/privatekey/id_rsa -o StrictHostKeyChecking=no " + tempDirPath + "/"
+                verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath + "/"
                     + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/"
                     + fileName);
                 if (exists) {
@@ -100,7 +100,7 @@ public class PublishVerifyController {
                 for (RepoIndex repoIndex : publishPO.getRepoIndexList()) {
                     if (repoIndex != null) {
                         if ("createrepo".equals(repoIndex.getIndexType())) {
-                            verifyService.execCmd("ssh -i /app-publish/privatekey/id_rsa -o StrictHostKeyChecking=no root@"
+                            verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                                 + publishPO.getRemoteRepoIp() + "'createrepo -d " + repoIndex.getRepoPath()+ "'");
                         }
                     }
