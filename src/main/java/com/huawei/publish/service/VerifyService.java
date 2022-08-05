@@ -39,7 +39,7 @@ public class VerifyService {
      */
     public String execCmd(String cmd) throws IOException, InterruptedException {
         log.info("cmd:" + cmd);
-        Process exec = Runtime.getRuntime().exec(new String[] {"/bin/sh","--login",cmd});
+        Process exec = Runtime.getRuntime().exec(new String[] {"/bin/sh","-c",cmd});
         exec.waitFor();
         String output = getExecOutput(exec);
         log.info("output:" + output);
