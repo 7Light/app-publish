@@ -67,13 +67,13 @@ public class PublishVerifyController {
                 verifyService.execCmd("mkdir -p " + tempDirPath);
             }
             for (FilePO file : files) {
-                File targetFile = new File(file.getTargetPath() + "/" + file.getName());
-                boolean exists = targetFile.exists();
-                if ("skip".equals(publishPO.getConflict()) && exists) {
+                String fileName = file.getName();
+                String folderExistsFlag = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                        + publishPO.getRemoteRepoIp() + " '[ -d " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist'");
+                if ("skip".equals(publishPO.getConflict()) && "exists".equals(folderExistsFlag)) {
                     file.setPublishResult("skip");
                     continue;
                 }
-                String fileName = file.getName();
                 fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
                 String verifyMessage = verify(tempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
@@ -86,10 +86,16 @@ public class PublishVerifyController {
                 if (!targetPathDir.exists()) {
                     targetPathDir.mkdirs();
                 }
-                verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath + "/"
-                    + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/"
-                    + fileName);
-                if (exists) {
+                if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith("/")) {
+                    tempDirPath = tempDirPath + "/";
+                }
+                if(!"exists".equals(folderExistsFlag)){
+                    verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                            + publishPO.getRemoteRepoIp() + " 'mkdir -p " + file.getTargetPath() +"'");
+                }
+                verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
+                    + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/" + fileName);
+                if ("exists".equals(folderExistsFlag)) {
                     file.setPublishResult("cover");
                 } else {
                     file.setPublishResult("normal");
@@ -101,7 +107,7 @@ public class PublishVerifyController {
                     if (repoIndex != null) {
                         if ("createrepo".equals(repoIndex.getIndexType())) {
                             verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                                + publishPO.getRemoteRepoIp() + "'createrepo -d " + repoIndex.getRepoPath()+ "'");
+                                + publishPO.getRemoteRepoIp() + " 'createrepo -d " + repoIndex.getRepoPath()+ "'");
                         }
                     }
                 }
