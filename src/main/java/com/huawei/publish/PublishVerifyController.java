@@ -68,8 +68,8 @@ public class PublishVerifyController {
             }
             for (FilePO file : files) {
                 String fileName = file.getName();
-                String folderExistsFlag = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                        + publishPO.getRemoteRepoIp() + " '[ -d " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist'");
+                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                        + publishPO.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
                 if ("skip".equals(publishPO.getConflict()) && "exists".equals(folderExistsFlag)) {
                     file.setPublishResult("skip");
                     continue;
@@ -90,8 +90,8 @@ public class PublishVerifyController {
                     tempDirPath = tempDirPath + "/";
                 }
                 if(!"exists".equals(folderExistsFlag)){
-                    verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                            + publishPO.getRemoteRepoIp() + " 'mkdir -p " + file.getTargetPath() +"'");
+                    verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                            + publishPO.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() +"\"");
                 }
                 verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
                     + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/" + fileName);
@@ -107,7 +107,7 @@ public class PublishVerifyController {
                     if (repoIndex != null) {
                         if ("createrepo".equals(repoIndex.getIndexType())) {
                             verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                                + publishPO.getRemoteRepoIp() + " 'createrepo -d " + repoIndex.getRepoPath()+ "'");
+                                + publishPO.getRemoteRepoIp() + " \"createrepo -d " + repoIndex.getRepoPath()+ "\"");
                         }
                     }
                 }
