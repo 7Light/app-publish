@@ -68,9 +68,9 @@ public class PublishVerifyController {
             }
             for (FilePO file : files) {
                 String fileName = file.getName();
-                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                        + publishPO.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
-                if ("skip".equals(publishPO.getConflict()) && "exists".equals(folderExistsFlag)) {
+                String fileExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                        + publishPO.getRemoteRepoIp() + " \"[ -f " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
+                if ("skip".equals(publishPO.getConflict()) && "exists".equals(fileExistsFlag)) {
                     file.setPublishResult("skip");
                     continue;
                 }
@@ -89,13 +89,15 @@ public class PublishVerifyController {
                 if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith("/")) {
                     tempDirPath = tempDirPath + "/";
                 }
+                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                        + publishPO.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
                 if(!"exists".equals(folderExistsFlag)){
                     verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                             + publishPO.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() +"\"");
                 }
                 verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
                     + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/" + fileName);
-                if ("exists".equals(folderExistsFlag)) {
+                if ("exists".equals(fileExistsFlag)) {
                     file.setPublishResult("cover");
                 } else {
                     file.setPublishResult("normal");
