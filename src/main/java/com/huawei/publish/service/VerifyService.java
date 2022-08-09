@@ -16,6 +16,7 @@ public class VerifyService {
     private String keyFileName;
     private String rpmKey;
     private String fileKey;
+    private String yamlKey;
 
     public VerifyService(String gpgKeyUrl, String keyFileName, String rpmKey, String fileKey) {
         this.gpgKeyUrl = gpgKeyUrl;
@@ -29,6 +30,7 @@ public class VerifyService {
         this.keyFileName = publishPO.getKeyFileName();
         this.rpmKey = publishPO.getRpmKey();
         this.fileKey = publishPO.getFileKey();
+        this.yamlKey = publishPO.getYamlKey();
     }
 
     /**
@@ -64,6 +66,23 @@ public class VerifyService {
             execCmd("rpm --import " + keyFileName);
         }
         String output = execCmd("rpm -K " + filePath);
+        return output.contains("OK") && !output.contains("not");
+    }
+
+    /**
+     * verify yaml file
+     *
+     * @param filePath yaml file path
+     * @return true or false
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public boolean yamlVerify(String filePath) throws IOException, InterruptedException {
+        if (!execCmd("yaml -q gpg-pubkey-*").contains(yamlKey)) {
+            execCmd("wget " + gpgKeyUrl);
+            execCmd("yaml --import " + keyFileName);
+        }
+        String output = execCmd("yaml -K " + filePath);
         return output.contains("OK") && !output.contains("not");
     }
 

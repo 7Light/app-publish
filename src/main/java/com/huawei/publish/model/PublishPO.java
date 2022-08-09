@@ -15,6 +15,7 @@ public class PublishPO {
     private String uploadType;//obs/others
     private String obsUrl;
     private String authorization;
+    private String yamlKey;
     List<FilePO> files;
     private List<RepoIndex> repoIndexList;
 
@@ -104,5 +105,13 @@ public class PublishPO {
 
     public void setAuthorization(String authorization) {
         this.authorization = authorization;
+    }
+
+    public String getYamlKey() {
+        return yamlKey;
+    }
+
+    public void setYamlKey(String yamlKey) {
+        this.yamlKey = yamlKey;
     }
 }
