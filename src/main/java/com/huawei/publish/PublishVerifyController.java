@@ -60,7 +60,7 @@ public class PublishVerifyController {
         }
         verifyService = new VerifyService(publishPO);
         List<FilePO> files = publishPO.getFiles();
-        String tempDirPath = publishPO.getTempDir();
+        String tempDirPath = getTempDirPath(publishPO.getTempDir());
         try {
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
@@ -162,5 +162,13 @@ public class PublishVerifyController {
             }
         }
         return "";
+    }
+
+    private String getTempDirPath(String tempDir) {
+        if (tempDir.startsWith("/")) {
+            return  "/var/log" + tempDir;
+        } else {
+            return "/var/log/" + tempDir;
+        }
     }
 }
