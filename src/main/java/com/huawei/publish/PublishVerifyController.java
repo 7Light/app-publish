@@ -165,9 +165,7 @@ public class PublishVerifyController {
             }
         }
         if ("yaml".equals(file.getVerifyType())) {
-            if (!verifyService.yamlVerify(tempDirPath + fileName)) {
-                return fileName + " digests signatures not OK.";
-            }
+            return "";
         }
         if (StringUtils.isEmpty(file.getSha256())) {
             String sha256 = verifyService.execCmd("cat " + tempDirPath + fileName + ".sha256");
