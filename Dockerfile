@@ -38,6 +38,6 @@ RUN mvn clean install -s settings.xml
 
 WORKDIR /usr/local
 RUN touch entrypoint.sh
-RUN echo "#!/bin/bash\nchmod 0600 /var/log/ssh_key/private.key\njava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" >>  /usr/local/entrypoint.sh
+RUN echo "#!/bin/bash\njava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" >>  /usr/local/entrypoint.sh
 RUN chmod u+x /usr/local/entrypoint.sh
 ENTRYPOINT ["/usr/local/entrypoint.sh"]
