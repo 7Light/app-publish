@@ -22,14 +22,10 @@ ENV CLASSPATH .:${JAVA_HOME}/lib:${JRE_HOME}/lib
 ENV PATH ${JAVA_HOME}/bin:$PATH
 
 # install obsutil
-ENV ak ""
-ENV sk ""
-ENV endpoint ""
 RUN wget https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_amd64.tar.gz
 RUN mkdir /usr/local/obsutil
 RUN tar -xzvf obsutil_linux_amd64.tar.gz -C /usr/local/obsutil
-RUN chmod 755 /usr/local/obsutil
-RUN ./obsutil config -i=${ak} -k=${sk} -e=${endpoint}
+RUN chmod 755 /usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil
 
 # app-publish
 RUN git clone -b mindspore https://github.com/7Light/app-publish.git
@@ -38,6 +34,6 @@ RUN mvn clean install -s settings.xml
 
 WORKDIR /usr/local
 RUN touch entrypoint.sh
-RUN echo "#!/bin/bash\njava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" >>  /usr/local/entrypoint.sh
+RUN echo "#!/bin/bash\n/usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil config -i=\$ak -k=\$sk -e=\$endpoint\njava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" >>  /usr/local/entrypoint.sh
 RUN chmod u+x /usr/local/entrypoint.sh
 ENTRYPOINT ["/usr/local/entrypoint.sh"]
