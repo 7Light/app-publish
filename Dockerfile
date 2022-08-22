@@ -25,6 +25,7 @@ ENV PATH ${JAVA_HOME}/bin:$PATH
 RUN wget https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_amd64.tar.gz
 RUN mkdir /usr/local/obsutil
 RUN tar -xzvf obsutil_linux_amd64.tar.gz -C /usr/local/obsutil
+RUN ln -s /usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil /usr/bin/obsutil
 RUN chmod 755 /usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil
 
 # app-publish
