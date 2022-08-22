@@ -73,12 +73,13 @@ public class PublishVerifyController {
             boolean deleteTemp = true;
             for (FilePO file : files) {
                 boolean exists = false;
+                String targetPath = StringUtils.isEmpty(file.getTargetPath()) ? "" : file.getTargetPath().trim();
                 if ("obs".equals(publishPO.getUploadType())) {
                     exists = !verifyService.execCmdAndContainsMessage("obsutil ls " +
-                            publishPO.getObsUrl() + (file.getTargetPath() + "/" + file.getName())
+                            publishPO.getObsUrl() + (targetPath + "/" + file.getName())
                             .replace("//", "/"), "is: 0B");
                 } else {
-                    File targetFile = new File(file.getTargetPath() + "/" + file.getName());
+                    File targetFile = new File(targetPath + "/" + file.getName());
                     exists = targetFile.exists();
                 }
                 if ("skip".equals(publishPO.getConflict()) && exists) {
@@ -108,15 +109,15 @@ public class PublishVerifyController {
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
                     uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + tempDirPath
-                            + fileName + " " + publishPO.getObsUrl() + (file.getTargetPath() + "/" + file.getName())
+                            + fileName + " " + publishPO.getObsUrl() + (targetPath + "/" + file.getName())
                             .replace("//", "/"), "Upload successfully");
 
                 } else {
-                    File targetPathDir = new File(file.getTargetPath());
+                    File targetPathDir = new File(targetPath);
                     if (!targetPathDir.exists()) {
                         targetPathDir.mkdirs();
                     }
-                    verifyService.execCmd("mv " + tempDirPath + "/" + fileName + " " + file.getTargetPath() + "/" + fileName);
+                    verifyService.execCmd("mv " + tempDirPath + "/" + fileName + " " + targetPath + "/" + fileName);
                 }
                 if (uploadSuccess) {
                     if (exists) {
@@ -196,7 +197,7 @@ public class PublishVerifyController {
             if (StringUtils.isEmpty(file.getTargetPath())) {
                 return "file target path can not be empty.";
             }
-            File targetFile = new File(file.getTargetPath() + "/" + file.getName());
+            File targetFile = new File(file.getTargetPath().trim() + "/" + file.getName());
             if ("error".equals(publishPO.getConflict()) && targetFile.exists()) {
                 return file.getName() + " already published.";
             }
