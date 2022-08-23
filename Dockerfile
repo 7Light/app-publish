@@ -1,4 +1,4 @@
-FROM ubuntu:xenial
+FROM openeuler/openeuler:22.03-lts
 
 # Set env
 USER root
