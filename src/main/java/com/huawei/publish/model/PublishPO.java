@@ -15,6 +15,17 @@ public class PublishPO {
     private String uploadType;//obs/others
     private String obsUrl;
     private String authorization;
+
+    private String publishId;
+
+    public String getPublishId() {
+        return publishId;
+    }
+
+    public void setPublishId(String publishId) {
+        this.publishId = publishId;
+    }
+
     List<FilePO> files;
     private List<RepoIndex> repoIndexList;
 
