@@ -89,7 +89,7 @@ public class PublishVerifyController {
                 String fileName = file.getName();
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
                     String authorization = publishPO.getAuthorization();
-                    verifyService.execCmd("wget -O " + tempDirPath + "/" + fileName + " --header='Authorization:" + authorization + "' --no-check-certificate  " + file.getUrl());
+                    fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName, authorization);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
                         file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256", authorization));
                     }
