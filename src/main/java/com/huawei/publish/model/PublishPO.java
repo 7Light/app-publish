@@ -15,6 +15,15 @@ public class PublishPO {
     List<FilePO> files;
     private List<RepoIndex> repoIndexList;
     private String remoteRepoIp;
+    private String publishId;
+
+    public String getPublishId() {
+        return publishId;
+    }
+
+    public void setPublishId(String publishId) {
+        this.publishId = publishId;
+    }
 
     public String getRemoteRepoIp() {
         return remoteRepoIp;

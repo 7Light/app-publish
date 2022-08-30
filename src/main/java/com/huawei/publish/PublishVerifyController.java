@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
@@ -26,6 +27,8 @@ import java.util.Map;
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
+    private static Map<String, PublishResult> publishResult = new HashMap<>();
+
     @Autowired
     private FileDownloadService fileDownloadService;
     private VerifyService verifyService;
@@ -122,6 +125,23 @@ public class PublishVerifyController {
         result.setFiles(files);
         result.setResult("success");
         return result;
+    }
+
+    @RequestMapping(value = "/publishAsync", method = RequestMethod.POST)
+    public String publishAsync(@RequestBody PublishPO publishPO) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                PublishResult publish = publish(publishPO);
+                publishResult.put(publishPO.getPublishId(), publish);
+            }
+        }).start();
+        return "Start publish task success.";
+    }
+
+    @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
+    public PublishResult getPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
+        return publishResult.get(publishId);
     }
 
     private String verify(String tempDirPath, FilePO file, String fileName) throws IOException, InterruptedException {
