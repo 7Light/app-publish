@@ -130,6 +130,7 @@ public class PublishVerifyController {
                 } else {
                     file.setPublishResult("fail");
                 }
+                verifyService.execCmd("rm -rf " + tempDirPath + fileName);
             }
             if (deleteTemp) {
                 verifyService.execCmd("rm -rf " + tempDirPath);
