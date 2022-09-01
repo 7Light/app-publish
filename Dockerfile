@@ -27,14 +27,3 @@ RUN mkdir /usr/local/obsutil
 RUN tar -xzvf obsutil_linux_amd64.tar.gz -C /usr/local/obsutil
 RUN ln -s /usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil /usr/bin/obsutil
 RUN chmod 755 /usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil
-
-# app-publish
-RUN git clone -b mindspore https://github.com/7Light/app-publish.git
-WORKDIR /app-publish
-RUN mvn clean install -s settings.xml
-
-WORKDIR /usr/local
-RUN touch entrypoint.sh
-RUN echo "#!/bin/bash\n/usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil config -i=\$ak -k=\$sk -e=\$endpoint\njava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" >>  /usr/local/entrypoint.sh
-RUN chmod u+x /usr/local/entrypoint.sh
-ENTRYPOINT ["/usr/local/entrypoint.sh"]
