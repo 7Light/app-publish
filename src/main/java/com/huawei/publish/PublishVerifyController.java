@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * main controller
@@ -89,9 +90,12 @@ public class PublishVerifyController {
                     continue;
                 }
                 String fileName = file.getName();
+                String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
+                File fileTempDir = new File(fileTempDirPath);
+                fileTempDir.mkdir();
                 if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
                     String authorization = publishPO.getAuthorization();
-                    fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName, authorization);
+                    fileDownloadService.downloadHttpUrl(file.getUrl(), fileTempDirPath, fileName, authorization);
                     if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
                         file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256", authorization));
                     }
@@ -99,7 +103,7 @@ public class PublishVerifyController {
                     deleteTemp = false;
                     tempDirPath = file.getUrl();
                 }
-                String verifyMessage = verify(tempDirPath, file, fileName);
+                String verifyMessage = verify(fileTempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
                     file.setVerifyResult(verifyMessage);
                     if (!"no signatures".equals(verifyMessage)) {
@@ -110,7 +114,7 @@ public class PublishVerifyController {
                 }
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + tempDirPath
+                    uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
                             + fileName + " " + publishPO.getObsUrl() + (targetPath + "/" + file.getName())
                             .replace("//", "/"), "Upload successfully");
 
@@ -119,7 +123,7 @@ public class PublishVerifyController {
                     if (!targetPathDir.exists()) {
                         targetPathDir.mkdirs();
                     }
-                    verifyService.execCmd("mv " + tempDirPath + "/" + fileName + " " + targetPath + "/" + fileName);
+                    verifyService.execCmd("mv " + fileTempDirPath + "/" + fileName + " " + targetPath + "/" + fileName);
                 }
                 if (uploadSuccess) {
                     if (exists) {
@@ -130,7 +134,7 @@ public class PublishVerifyController {
                 } else {
                     file.setPublishResult("fail");
                 }
-                verifyService.execCmd("rm -rf " + tempDirPath + fileName);
+                verifyService.execCmd("rm -rf " + fileTempDirPath + fileName);
             }
             if (deleteTemp) {
                 verifyService.execCmd("rm -rf " + tempDirPath);
