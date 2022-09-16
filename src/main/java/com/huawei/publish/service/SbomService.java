@@ -46,9 +46,6 @@ public class SbomService {
     public Map<String, String> publishSbomFile(PublishPO publishPO, String sbomContent) {
         Map<String, String> paramMap = new HashMap<>();
         paramMap.put("productName", publishPO.getFiles().get(0).getTargetPath());
-        paramMap.put("spec", "SPDX");
-        paramMap.put("specVersion", "2.2");
-        paramMap.put("format", "json");
         paramMap.put("sbomContent", sbomContent);
         //定义发送数据
         String paramJson= JSON.toJSONString(paramMap);
@@ -82,6 +79,8 @@ public class SbomService {
         }
         if (!object.getObject("finish", Boolean.class)) {
             queryResultMap.put("errorInfo", "SBOM发布未完成");
+            queryResultMap.put("result", "publishing");
+            return queryResultMap;
         }
         queryResultMap.put("sbomRef", object.getObject("sbomRef", String.class));
         queryResultMap.put("result", "success");

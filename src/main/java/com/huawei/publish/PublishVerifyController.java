@@ -150,7 +150,22 @@ public class PublishVerifyController {
     }
 
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.GET)
-    public SbomResultPO querySbomPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
+    public SbomResultPO querySbomPublishResult(@RequestParam(value = "publishId", required = true) String publishId
+    ,@RequestParam(value = "querySbomPublishResultUrl", required = true) String querySbomPublishResultUrl) {
+        SbomResultPO sbomResult = sbomResultMap.get(publishId);
+        // 发布未完成，再次查结果
+        if(sbomResult != null && "publishing".equals(sbomResult.getResult())){
+            Map<String, String> queryResult = sbomService.querySbomPublishResult(
+                querySbomPublishResultUrl + "/" +sbomResult.getTaskId());
+            sbomResult.setResult(queryResult.get("result"));
+            if(!"success".equals(queryResult.get("result"))){
+                sbomResult.setMessage(queryResult.get("errorInfo"));
+                sbomResultMap.put(publishId, sbomResult);
+                return sbomResult;
+            }
+            sbomResult.setSbomRef(queryResult.get("sbomRef"));
+            sbomResultMap.put(publishId, sbomResult);
+        }
         return sbomResultMap.get(publishId);
     }
 
