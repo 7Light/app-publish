@@ -4,7 +4,9 @@ import com.huawei.publish.model.FilePO;
 import com.huawei.publish.model.PublishPO;
 import com.huawei.publish.model.PublishResult;
 import com.huawei.publish.model.RepoIndex;
+import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.FileDownloadService;
+import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -28,10 +30,13 @@ import java.util.Map;
 @RestController
 public class PublishVerifyController {
     private static Map<String, PublishResult> publishResult = new HashMap<>();
+    private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
 
     @Autowired
     private FileDownloadService fileDownloadService;
     private VerifyService verifyService;
+    @Autowired
+    private SbomService sbomService;
 
     /**
      * heartbeat
@@ -53,7 +58,6 @@ public class PublishVerifyController {
      */
     @RequestMapping(value = "/publish", method = RequestMethod.POST)
     public PublishResult publish(@RequestBody PublishPO publishPO) {
-
         PublishResult result = new PublishResult();
         String validate = validate(publishPO);
         if (!StringUtils.isEmpty(validate)) {
@@ -122,6 +126,7 @@ public class PublishVerifyController {
             result.setMessage("publish failed, " + e.getMessage());
             return result;
         }
+        sbomResultAsync(publishPO);
         result.setFiles(files);
         result.setResult("success");
         return result;
@@ -142,6 +147,46 @@ public class PublishVerifyController {
     @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
     public PublishResult getPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
         return publishResult.get(publishId);
+    }
+
+    @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.GET)
+    public SbomResultPO querySbomPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
+        return sbomResultMap.get(publishId);
+    }
+
+    public void sbomResultAsync(PublishPO publishPO) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                SbomResultPO sbomResult = new SbomResultPO();
+                sbomResult.setResult("success");
+                Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO);
+                if(!"success".equals(generateResult.get("result"))){
+                    sbomResult.setResult(generateResult.get("result"));
+                    sbomResult.setMessage(generateResult.get("errorInfo"));
+                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+                    return;
+                }
+                Map<String, String> publishResult = sbomService.publishSbomFile(publishPO, generateResult.get("sbomContent"));
+                if(!"success".equals(publishResult.get("result"))){
+                    sbomResult.setResult(publishResult.get("result"));
+                    sbomResult.setMessage(publishResult.get("errorInfo"));
+                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+                    return;
+                }
+                sbomResult.setTaskId(publishResult.get("taskId"));
+                String queryUrl = publishPO.getSbom().getQuerySbomPublishResultUrl() + "/" + publishResult.get("taskId");
+                Map<String, String> queryResult = sbomService.querySbomPublishResult(queryUrl);
+                if(!"success".equals(queryResult.get("result"))){
+                    sbomResult.setResult(queryResult.get("result"));
+                    sbomResult.setMessage(queryResult.get("errorInfo"));
+                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+                    return;
+                }
+                sbomResult.setSbomRef(queryResult.get("sbomRef"));
+                sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+            }
+        }).start();
     }
 
     private String verify(String tempDirPath, FilePO file, String fileName) throws IOException, InterruptedException {

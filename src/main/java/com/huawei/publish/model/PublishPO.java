@@ -16,6 +16,15 @@ public class PublishPO {
     private List<RepoIndex> repoIndexList;
     private String remoteRepoIp;
     private String publishId;
+    private SbomPO sbom;
+
+    public SbomPO getSbom() {
+        return sbom;
+    }
+
+    public void setSbom(SbomPO sbom) {
+        this.sbom = sbom;
+    }
 
     public String getPublishId() {
         return publishId;
