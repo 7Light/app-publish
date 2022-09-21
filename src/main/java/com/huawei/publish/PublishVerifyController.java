@@ -156,17 +156,30 @@ public class PublishVerifyController {
     ,@RequestParam(value = "querySbomPublishResultUrl", required = true) String querySbomPublishResultUrl) {
         SbomResultPO sbomResult = sbomResultMap.get(publishId);
         // 发布未完成，再次查结果
-        if(sbomResult != null && "publishing".equals(sbomResult.getResult())){
-            Map<String, String> queryResult = sbomService.querySbomPublishResult(
-                querySbomPublishResultUrl + "/" +sbomResult.getTaskId());
-            sbomResult.setResult(queryResult.get("result"));
-            if(!"success".equals(queryResult.get("result"))){
-                sbomResult.setMessage(queryResult.get("errorInfo"));
-                sbomResultMap.put(publishId, sbomResult);
+        if(sbomResult != null){
+            if(StringUtils.isEmpty(sbomResult.getTaskId())){
                 return sbomResult;
             }
-            sbomResult.setSbomRef(queryResult.get("sbomRef"));
-            sbomResultMap.put(publishId, sbomResult);
+            String[] taskIdArray = sbomResult.getTaskId().split(";");
+            String sbomRef = null;
+            for (String taskId : taskIdArray) {
+                Map<String, String> queryResult = sbomService.querySbomPublishResult(
+                    querySbomPublishResultUrl + "/" + taskId);
+                sbomResult.setResult(queryResult.get("result"));
+                if(!"success".equals(queryResult.get("result"))){
+                    sbomResult.setMessage(queryResult.get("errorInfo"));
+                    sbomResultMap.put(publishId, sbomResult);
+                    return sbomResult;
+                }
+                if (StringUtils.isEmpty(sbomRef)) {
+                    sbomRef = queryResult.get("sbomRef");
+                } else {
+                    sbomRef = sbomRef + ";" + queryResult.get("sbomRef");
+                }
+                sbomResult.setSbomRef(sbomRef);
+                sbomResultMap.put(publishId, sbomResult);
+            }
+
         }
         return sbomResultMap.get(publishId);
     }
@@ -202,25 +215,6 @@ public class PublishVerifyController {
                         taskId = taskId + ";" + publishResult.get("taskId");
                     }
                     sbomResult.setTaskId(taskId);
-                    String queryUrl = publishPO.getSbom().getQuerySbomPublishResultUrl() + "/" + publishResult.get("taskId");
-                    Map<String, String> queryResult = sbomService.querySbomPublishResult(queryUrl);
-                    if(!"success".equals(queryResult.get("result"))){
-                        sbomResult.setResult(queryResult.get("result"));
-                        sbomResult.setMessage(queryResult.get("errorInfo"));
-                        sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-                        if("publishing".equals(queryResult.get("result"))){
-                            continue;
-                        }
-                        return;
-                    }
-                    if (StringUtils.isEmpty(sbomRef)) {
-                        sbomRef = queryResult.get("sbomRef");
-                    } else {
-                        sbomRef = sbomRef + ";" + queryResult.get("sbomRef");
-                    }
-
-                    sbomResult.setSbomRef(sbomRef);
-                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
                 }
             }
         }).start();
