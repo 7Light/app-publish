@@ -18,14 +18,14 @@ public class SbomService {
      * @param publishPO 参数
      * @return Map SBOM生成接口结果
      */
-    public Map<String, String> generateOpeneulerSbom(PublishPO publishPO) {
+    public Map<String, String> generateOpeneulerSbom(PublishPO publishPO, String artifactPath) {
         SbomPO sbomPO = publishPO.getSbom();
+        Map<String, String> generateResultMap = new HashMap<>();
         Map<String, String> paramMap = new HashMap<>();
-        paramMap.put("artifactPath",publishPO.getFiles().get(0).getTargetPath());
-        String  paramJson= JSON.toJSONString(paramMap);
+        paramMap.put("artifactPath", artifactPath);
+        String paramJson= JSON.toJSONString(paramMap);
         String responseContent = HttpRequestUtil.doPost(sbomPO.getGenerateSbomUrl(), paramJson);
         JSONObject object = JSONObject.parseObject(responseContent);
-        Map<String, String> generateResultMap = new HashMap<>();
         if (object.getObject("success", Boolean.class) == null || !object.getObject("success", Boolean.class)) {
             generateResultMap.put("errorInfo", "SBOM生成: " + object.getObject("errorInfo", String.class));
             generateResultMap.put("result", "fail");
@@ -43,9 +43,9 @@ public class SbomService {
      * @param sbomContent SBOM文本内容
      * @return Map SBOM发布结果
      */
-    public Map<String, String> publishSbomFile(PublishPO publishPO, String sbomContent) {
+    public Map<String, String> publishSbomFile(PublishPO publishPO, String sbomContent, String productName) {
         Map<String, String> paramMap = new HashMap<>();
-        paramMap.put("productName", publishPO.getFiles().get(0).getTargetPath());
+        paramMap.put("productName", productName);
         paramMap.put("sbomContent", sbomContent);
         //定义发送数据
         String paramJson= JSON.toJSONString(paramMap);

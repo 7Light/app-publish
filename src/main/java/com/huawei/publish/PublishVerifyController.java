@@ -20,8 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * main controller
@@ -173,35 +175,63 @@ public class PublishVerifyController {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                SbomResultPO sbomResult = new SbomResultPO();
-                sbomResult.setResult("success");
-                Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO);
-                if(!"success".equals(generateResult.get("result"))){
-                    sbomResult.setResult(generateResult.get("result"));
-                    sbomResult.setMessage(generateResult.get("errorInfo"));
+                Set<String> artifactPaths = getArtifactPaths(publishPO.getFiles());
+                String sbomRef = null;
+                String taskId = null;
+                for (String artifactPath : artifactPaths) {
+                    SbomResultPO sbomResult = new SbomResultPO();
+                    sbomResult.setResult("success");
+                    Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO, artifactPath);
+                    if(!"success".equals(generateResult.get("result"))){
+                        sbomResult.setResult(generateResult.get("result"));
+                        sbomResult.setMessage(generateResult.get("errorInfo"));
+                        sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+                        return;
+                    }
+                    Map<String, String> publishResult = sbomService.publishSbomFile(publishPO,
+                        generateResult.get("sbomContent"), artifactPath);
+                    if(!"success".equals(publishResult.get("result"))){
+                        sbomResult.setResult(publishResult.get("result"));
+                        sbomResult.setMessage(publishResult.get("errorInfo"));
+                        sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+                        return;
+                    }
+                    if (StringUtils.isEmpty(taskId)) {
+                        taskId = publishResult.get("taskId");
+                    } else {
+                        taskId = taskId + ";" + publishResult.get("taskId");
+                    }
+                    sbomResult.setTaskId(taskId);
+                    String queryUrl = publishPO.getSbom().getQuerySbomPublishResultUrl() + "/" + publishResult.get("taskId");
+                    Map<String, String> queryResult = sbomService.querySbomPublishResult(queryUrl);
+                    if(!"success".equals(queryResult.get("result"))){
+                        sbomResult.setResult(queryResult.get("result"));
+                        sbomResult.setMessage(queryResult.get("errorInfo"));
+                        sbomResultMap.put(publishPO.getPublishId(), sbomResult);
+                        if("publishing".equals(queryResult.get("result"))){
+                            continue;
+                        }
+                        return;
+                    }
+                    if (StringUtils.isEmpty(sbomRef)) {
+                        sbomRef = queryResult.get("sbomRef");
+                    } else {
+                        sbomRef = sbomRef + ";" + queryResult.get("sbomRef");
+                    }
+
+                    sbomResult.setSbomRef(sbomRef);
                     sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-                    return;
                 }
-                Map<String, String> publishResult = sbomService.publishSbomFile(publishPO, generateResult.get("sbomContent"));
-                if(!"success".equals(publishResult.get("result"))){
-                    sbomResult.setResult(publishResult.get("result"));
-                    sbomResult.setMessage(publishResult.get("errorInfo"));
-                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-                    return;
-                }
-                sbomResult.setTaskId(publishResult.get("taskId"));
-                String queryUrl = publishPO.getSbom().getQuerySbomPublishResultUrl() + "/" + publishResult.get("taskId");
-                Map<String, String> queryResult = sbomService.querySbomPublishResult(queryUrl);
-                if(!"success".equals(queryResult.get("result"))){
-                    sbomResult.setResult(queryResult.get("result"));
-                    sbomResult.setMessage(queryResult.get("errorInfo"));
-                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-                    return;
-                }
-                sbomResult.setSbomRef(queryResult.get("sbomRef"));
-                sbomResultMap.put(publishPO.getPublishId(), sbomResult);
             }
         }).start();
+    }
+
+    private Set<String> getArtifactPaths(List<FilePO> files) {
+        Set<String> set = new HashSet<>();
+        for (FilePO file : files) {
+            set.add(file.getTargetPath());
+        }
+        return set;
     }
 
     private String verify(String tempDirPath, FilePO file, String fileName) throws IOException, InterruptedException {
