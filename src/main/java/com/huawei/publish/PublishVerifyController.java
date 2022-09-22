@@ -189,11 +189,10 @@ public class PublishVerifyController {
             @Override
             public void run() {
                 Set<String> artifactPaths = getArtifactPaths(publishPO.getFiles());
-                String sbomRef = null;
                 String taskId = null;
+                SbomResultPO sbomResult = new SbomResultPO();
+                sbomResult.setResult("success");
                 for (String artifactPath : artifactPaths) {
-                    SbomResultPO sbomResult = new SbomResultPO();
-                    sbomResult.setResult("success");
                     Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO, artifactPath);
                     if(!"success".equals(generateResult.get("result"))){
                         sbomResult.setResult(generateResult.get("result"));
@@ -216,6 +215,7 @@ public class PublishVerifyController {
                     }
                     sbomResult.setTaskId(taskId);
                 }
+                sbomResultMap.put(publishPO.getPublishId(), sbomResult);
             }
         }).start();
     }
