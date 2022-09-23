@@ -10,10 +10,17 @@ public class FilePO {
     private String parentDir = "";
     private String url;
     private String sha256;
-
     private String publishResult;
-
     private String verifyResult;
+    private String sbomRef;
+
+    public String getSbomRef() {
+        return sbomRef;
+    }
+
+    public void setSbomRef(String sbomRef) {
+        this.sbomRef = sbomRef;
+    }
 
     public String getPublishResult() {
         return publishResult;
@@ -50,7 +57,6 @@ public class FilePO {
     }
 
     private String verifyType = "";
-
 
     public String getName() {
         return name;

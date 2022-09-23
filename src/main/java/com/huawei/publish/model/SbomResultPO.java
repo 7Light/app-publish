@@ -1,27 +1,22 @@
 package com.huawei.publish.model;
 
+import java.util.List;
+import java.util.Map;
+
 public class SbomResultPO {
     private String message;
 
     private String result;
 
-    private String taskId;
+    private Map<String, String> taskId ;
 
-    private String sbomRef;
+    private List<FilePO> files;
 
-    public String getSbomRef() {
-        return sbomRef;
-    }
-
-    public void setSbomRef(String sbomRef) {
-        this.sbomRef = sbomRef;
-    }
-
-    public String getTaskId() {
+    public Map<String, String> getTaskId() {
         return taskId;
     }
 
-    public void setTaskId(String taskId) {
+    public void setTaskId(Map<String, String> taskId) {
         this.taskId = taskId;
     }
 
@@ -39,5 +34,13 @@ public class SbomResultPO {
 
     public void setResult(String result) {
         this.result = result;
+    }
+
+    public List<FilePO> getFiles() {
+        return files;
+    }
+
+    public void setFiles(List<FilePO> files) {
+        this.files = files;
     }
 }

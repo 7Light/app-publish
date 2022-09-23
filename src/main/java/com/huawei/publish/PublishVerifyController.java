@@ -128,7 +128,7 @@ public class PublishVerifyController {
             result.setMessage("publish failed, " + e.getMessage());
             return result;
         }
-        sbomResultAsync(publishPO);
+        sbomResultAsync(publishPO, files);
         result.setFiles(files);
         result.setResult("success");
         return result;
@@ -155,43 +155,41 @@ public class PublishVerifyController {
     public SbomResultPO querySbomPublishResult(@RequestParam(value = "publishId", required = true) String publishId
     ,@RequestParam(value = "querySbomPublishResultUrl", required = true) String querySbomPublishResultUrl) {
         SbomResultPO sbomResult = sbomResultMap.get(publishId);
-        // 发布未完成，再次查结果
         if(sbomResult != null){
-            if(StringUtils.isEmpty(sbomResult.getTaskId())){
+            if(sbomResult.getTaskId() == null){
                 return sbomResult;
             }
-            String[] taskIdArray = sbomResult.getTaskId().split(";");
-            String sbomRef = null;
-            for (String taskId : taskIdArray) {
+            Map<String, String> taskIdMap = sbomResult.getTaskId();
+            Map<String, String> sbomRefMap = new HashMap<>();
+            for(String key : taskIdMap.keySet()){
+                String value = taskIdMap.get(key);
                 Map<String, String> queryResult = sbomService.querySbomPublishResult(
-                    querySbomPublishResultUrl + "/" + taskId);
+                    querySbomPublishResultUrl + "/" + value);
                 sbomResult.setResult(queryResult.get("result"));
                 if(!"success".equals(queryResult.get("result"))){
                     sbomResult.setMessage(queryResult.get("errorInfo"));
                     sbomResultMap.put(publishId, sbomResult);
                     return sbomResult;
                 }
-                if (StringUtils.isEmpty(sbomRef)) {
-                    sbomRef = queryResult.get("sbomRef");
-                } else {
-                    sbomRef = sbomRef + ";" + queryResult.get("sbomRef");
-                }
-                sbomResult.setSbomRef(sbomRef);
-                sbomResultMap.put(publishId, sbomResult);
+                sbomRefMap.put(key, queryResult.get("sbomRef"));
             }
-
+            for (FilePO file : sbomResult.getFiles()) {
+                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
+            }
+            sbomResultMap.put(publishId, sbomResult);
         }
         return sbomResultMap.get(publishId);
     }
 
-    public void sbomResultAsync(PublishPO publishPO) {
+    public void sbomResultAsync(PublishPO publishPO, List<FilePO> files) {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 Set<String> artifactPaths = getArtifactPaths(publishPO.getFiles());
-                String taskId = null;
+                Map<String, String> taskId = new HashMap<>();
                 SbomResultPO sbomResult = new SbomResultPO();
                 sbomResult.setResult("success");
+                sbomResult.setFiles(files);
                 for (String artifactPath : artifactPaths) {
                     Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO, artifactPath);
                     if(!"success".equals(generateResult.get("result"))){
@@ -208,13 +206,9 @@ public class PublishVerifyController {
                         sbomResultMap.put(publishPO.getPublishId(), sbomResult);
                         return;
                     }
-                    if (StringUtils.isEmpty(taskId)) {
-                        taskId = publishResult.get("taskId");
-                    } else {
-                        taskId = taskId + ";" + publishResult.get("taskId");
-                    }
-                    sbomResult.setTaskId(taskId);
+                    taskId.put(artifactPath, publishResult.get("taskId"));
                 }
+                sbomResult.setTaskId(taskId);
                 sbomResultMap.put(publishPO.getPublishId(), sbomResult);
             }
         }).start();
