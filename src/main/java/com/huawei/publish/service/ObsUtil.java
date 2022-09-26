@@ -4,13 +4,7 @@ import com.huawei.publish.model.FileFromRepoModel;
 import com.obs.services.ObsClient;
 import com.obs.services.ObsConfiguration;
 import com.obs.services.exception.ObsException;
-import com.obs.services.model.CopyObjectResult;
-import com.obs.services.model.DownloadFileRequest;
-import com.obs.services.model.ListObjectsRequest;
-import com.obs.services.model.MonitorableProgressListener;
-import com.obs.services.model.ObjectListing;
-import com.obs.services.model.ObsObject;
-import com.obs.services.model.ProgressStatus;
+import com.obs.services.model.*;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -29,6 +23,7 @@ public class ObsUtil {
     private ObsConfiguration config;
 
     private static String bucketName = "openlibing-test";
+
 
     public ObsUtil() {
         config = new ObsConfiguration();
@@ -73,7 +68,44 @@ public class ObsUtil {
                 }
                 if (objectKey.contains(pathStr)) {
                     file.setName(objectKey.substring(objectKey.lastIndexOf(pathStr) + 1));
-                    file.setParentDir(objectKey.substring(0, objectKey.lastIndexOf(pathStr)) + 1);
+                    file.setParentDir(objectKey.substring(0, objectKey.lastIndexOf(pathStr) + 1));
+                } else {
+                    file.setName(objectKey);
+                }
+                file.setDir(isDir);
+                result.add(file);
+            }
+            return result;
+        } catch (ObsException e) {
+            log.error(e.getErrorMessage());
+            return null;
+        } finally {
+            if (obsClient != null) {
+                try {
+                    obsClient.close();
+                } catch (IOException e) {
+                    log.error("", e);
+                }
+            }
+        }
+    }
+
+    public List<FileFromRepoModel> listObjects() {
+        ObsClient obsClient = new ObsClient(ak, sk, config);
+        try {
+            ObjectListing objectListing = obsClient.listObjects(bucketName);
+            List<FileFromRepoModel> result = new ArrayList<>();
+            for (ObsObject object : objectListing.getObjects()) {
+                FileFromRepoModel file = new FileFromRepoModel();
+                String objectKey = object.getObjectKey();
+                String pathStr = "/";
+                boolean isDir = objectKey.endsWith(pathStr);
+                if (isDir) {
+                    objectKey = objectKey.substring(0, objectKey.length() - 1);
+                }
+                if (objectKey.contains(pathStr)) {
+                    file.setName(objectKey.substring(objectKey.lastIndexOf(pathStr) + 1));
+                    file.setParentDir(objectKey.substring(0, objectKey.lastIndexOf(pathStr) + 1));
                 } else {
                     file.setName(objectKey);
                 }

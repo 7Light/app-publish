@@ -1,27 +1,18 @@
 package com.huawei.publish;
 
-import com.huawei.publish.model.FilePO;
-import com.huawei.publish.model.PublishPO;
-import com.huawei.publish.model.PublishResult;
-import com.huawei.publish.model.RepoIndex;
+import com.huawei.publish.model.*;
 import com.huawei.publish.service.FileDownloadService;
+import com.huawei.publish.service.ObsUtil;
 import com.huawei.publish.service.VerifyService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * main controller
@@ -34,6 +25,7 @@ public class PublishVerifyController {
     @Autowired
     private FileDownloadService fileDownloadService;
     private VerifyService verifyService;
+    private ObsUtil obsUtil;
 
     /**
      * heartbeat
@@ -66,6 +58,7 @@ public class PublishVerifyController {
         verifyService = new VerifyService(publishPO);
         List<FilePO> files = publishPO.getFiles();
         String tempDirPath = publishPO.getTempDir();
+        obsUtil = new ObsUtil();
         try {
             if (!StringUtils.isEmpty(tempDirPath)) {
                 File tempDir = new File(tempDirPath);
@@ -73,7 +66,6 @@ public class PublishVerifyController {
                     verifyService.execCmd("mkdir -p " + tempDirPath);
                 }
             }
-            boolean deleteTemp = true;
             for (FilePO file : files) {
                 boolean exists = false;
                 String targetPath = StringUtils.isEmpty(file.getTargetPath()) ? "" : file.getTargetPath().trim();
@@ -82,7 +74,7 @@ public class PublishVerifyController {
                             publishPO.getObsUrl() + (targetPath + "/" + file.getName())
                             .replace("//", "/"), "is: 0B");
                 } else {
-                    File targetFile = new File(targetPath + "/" + file.getName());
+                    File targetFile = new File(targetPath + file.getName());
                     exists = targetFile.exists();
                 }
                 if ("skip".equals(publishPO.getConflict()) && exists) {
@@ -93,15 +85,15 @@ public class PublishVerifyController {
                 String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
                 File fileTempDir = new File(fileTempDirPath);
                 fileTempDir.mkdir();
-                if (!StringUtils.isEmpty(file.getUrl()) && file.getUrl().startsWith("http")) {
-                    String authorization = publishPO.getAuthorization();
-                    fileDownloadService.downloadHttpUrl(file.getUrl(), fileTempDirPath, fileName, authorization);
-                    if (!fileName.endsWith(".sha256") && !fileName.endsWith(".asc")) {
-                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256", authorization));
+                if (!StringUtils.isEmpty(file.getUrl())) {
+                    obsUtil.downFile(file.getUrl(), fileTempDirPath);
+                    if (fileName.endsWith(".tar.bz2")) {
+                        file.setSha256(fileDownloadService.getContent(file.getUrl().replace(".tar.bz2", ".sha256"), null));
+                    }else if(!fileName.endsWith(".sha256")) {
+                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256", null));
                     }
                 } else {
-                    deleteTemp = false;
-                    tempDirPath = file.getUrl();
+                    fileTempDirPath = file.getUrl();
                 }
                 String verifyMessage = verify(fileTempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
@@ -114,16 +106,13 @@ public class PublishVerifyController {
                 }
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
-                            + fileName + " " + publishPO.getObsUrl() + (targetPath + "/" + file.getName())
-                            .replace("//", "/"), "Upload successfully");
-
+                    uploadSuccess = new ObsUtil().copyObject(file.getUrl(), targetPath);
                 } else {
                     File targetPathDir = new File(targetPath);
                     if (!targetPathDir.exists()) {
                         targetPathDir.mkdirs();
                     }
-                    verifyService.execCmd("mv " + fileTempDirPath + "/" + fileName + " " + targetPath + "/" + fileName);
+                    verifyService.execCmd("mv " + fileTempDirPath + fileName + " " + targetPath + fileName);
                 }
                 if (uploadSuccess) {
                     if (exists) {
@@ -136,18 +125,7 @@ public class PublishVerifyController {
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath + fileName);
             }
-            if (deleteTemp) {
-                verifyService.execCmd("rm -rf " + tempDirPath);
-            }
-            if (!CollectionUtils.isEmpty(publishPO.getRepoIndexList())) {
-                for (RepoIndex repoIndex : publishPO.getRepoIndexList()) {
-                    if (repoIndex != null) {
-                        if ("createrepo".equals(repoIndex.getIndexType())) {
-                            verifyService.execCmd("createrepo -d " + repoIndex.getRepoPath());
-                        }
-                    }
-                }
-            }
+            verifyService.execCmd("rm -rf " + tempDirPath);
         } catch (IOException | InterruptedException e) {
             result.setResult("fail");
             result.setMessage("publish failed, " + e.getMessage());
@@ -175,29 +153,40 @@ public class PublishVerifyController {
         return publishResult.get(publishId);
     }
 
+    /**
+     * 提供需要发布的文件列表,由FileFromRepoUtil类中的getFiles（）方法请求调用
+     *
+     * @param path
+     * @return
+     */
+    @RequestMapping(value = "/getPublishList", method = RequestMethod.GET)
+    public List<FileFromRepoModel> getPublishList(@RequestParam(value = "path") String path) {
+        obsUtil = new ObsUtil();
+        ArrayList<FileFromRepoModel> result = new ArrayList<>();
+        if (StringUtils.isEmpty(path)) {
+            List<FileFromRepoModel> files = obsUtil.listObjects();
+            for (FileFromRepoModel file : files) {
+                //获取顶层文件
+                if (file.getParentDir() == null) {
+                    result.add(file);
+                }
+            }
+        } else {
+            List<FileFromRepoModel> files = obsUtil.listObjects(path);
+            for (FileFromRepoModel file : files) {
+                //获取内层文件
+                if (path.equals(file.getParentDir())) {
+                    result.add(file);
+                }
+            }
+        }
+        return result;
+    }
 
     private String verify(String tempDirPath, FilePO file, String fileName) throws IOException, InterruptedException {
-        if (fileName.endsWith(".sha256")) {
+        if (fileName.endsWith(".sha256") || "latest/".equals(file.getParentDir()) || file.getParentDir().contains(
+                "binarylibs_update/") || file.getParentDir().contains("binarylibs/") || "git.num.txt".equals(fileName)) {
             return "";
-        }
-        if ("asc".equals(file.getVerifyType())) {
-            if (!verifyService.fileVerify(tempDirPath + fileName)) {
-                return fileName + " digests signatures not OK.";
-            }
-        }
-        if ("rpm".equals(file.getVerifyType())) {
-            if (!verifyService.rpmVerify(tempDirPath + fileName)) {
-                return fileName + " digests signatures not OK.";
-            }
-        }
-        if ("yaml".equals(file.getVerifyType())) {
-            return "";
-        }
-        if (StringUtils.isEmpty(file.getSha256())) {
-            String sha256 = verifyService.execCmd("cat " + tempDirPath + fileName + ".sha256");
-            if (!sha256.contains("No such file or directory")) {
-                file.setSha256(sha256);
-            }
         }
         if (!StringUtils.isEmpty(file.getSha256())) {
             if (!verifyService.checksum256Verify(tempDirPath + fileName, file.getSha256())) {
@@ -210,10 +199,6 @@ public class PublishVerifyController {
     }
 
     private String validate(PublishPO publishPO) {
-        if (StringUtils.isEmpty(publishPO.getGpgKeyUrl())) {
-            return "key url cannot be blank.";
-        }
-
         if (CollectionUtils.isEmpty(publishPO.getFiles())) {
             return "files cannot be empty.";
         }
@@ -229,4 +214,6 @@ public class PublishVerifyController {
         }
         return "";
     }
+
+
 }
