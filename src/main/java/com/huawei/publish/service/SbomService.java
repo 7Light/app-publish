@@ -5,13 +5,14 @@ import com.alibaba.fastjson.JSONObject;
 import com.huawei.publish.model.PublishPO;
 import com.huawei.publish.model.SbomPO;
 import com.huawei.publish.utils.HttpRequestUtil;
+import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 @Component
 public class SbomService {
-
+    private static Logger log = Logger.getLogger(SbomService.class);
     /**
      * SBOM生成
      *
@@ -29,6 +30,7 @@ public class SbomService {
         if (object.getObject("success", Boolean.class) == null || !object.getObject("success", Boolean.class)) {
             generateResultMap.put("errorInfo", "SBOM生成: " + object.getObject("errorInfo", String.class));
             generateResultMap.put("result", "fail");
+            log.error("SBOM生成: " + object.getObject("errorInfo", String.class));
             return generateResultMap;
         }
         generateResultMap.put("result", "success");
@@ -55,6 +57,7 @@ public class SbomService {
         if (object.getObject("success", Boolean.class) == null || !object.getObject("success", Boolean.class)) {
             publishResultMap.put("errorInfo", "SBOM发布: " + object.getObject("errorInfo", String.class));
             publishResultMap.put("result", "fail");
+            log.error("SBOM发布: " + object.getObject("errorInfo", String.class));
             return publishResultMap;
         }
         publishResultMap.put("taskId", object.getObject("taskId", String.class));
@@ -75,6 +78,7 @@ public class SbomService {
         if (object.getObject("success", Boolean.class) == null || !object.getObject("success", Boolean.class)) {
             queryResultMap.put("errorInfo", "SBOM结果: " + object.getObject("errorInfo", String.class));
             queryResultMap.put("result", "fail");
+            log.error("SBOM结果: " + object.getObject("errorInfo", String.class));
             return queryResultMap;
         }
         if (!object.getObject("finish", Boolean.class)) {
