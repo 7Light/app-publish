@@ -8,6 +8,7 @@ import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.FileDownloadService;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -31,6 +32,7 @@ import java.util.Set;
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
+    private static Logger log = Logger.getLogger(PublishVerifyController.class);
     private static Map<String, PublishResult> publishResult = new HashMap<>();
     private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
 
@@ -141,6 +143,7 @@ public class PublishVerifyController {
             public void run() {
                 PublishResult publish = publish(publishPO);
                 publishResult.put(publishPO.getPublishId(), publish);
+                log.info("publishAsync:" + publishResult.get(publishPO.getPublishId()).getResult());
             }
         }).start();
         return "Start publish task success.";
@@ -148,6 +151,11 @@ public class PublishVerifyController {
 
     @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
     public PublishResult getPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
+        if (publishResult.get(publishId) !=null) {
+            log.info("getPublishResult:" + publishResult.get(publishId).getResult());
+        } else {
+            log.info("结果查询为空：" + publishId);
+        }
         return publishResult.get(publishId);
     }
 
