@@ -129,6 +129,7 @@ public class PublishVerifyController {
             return result;
         }
         sbomResultAsync(publishPO, files);
+        result.setMessage("publish success");
         result.setFiles(files);
         result.setResult("success");
         return result;

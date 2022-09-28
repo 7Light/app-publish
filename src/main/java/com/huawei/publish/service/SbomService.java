@@ -35,7 +35,6 @@ public class SbomService {
         }
         generateResultMap.put("result", "success");
         generateResultMap.put("sbomContent", object.getObject("sbomContent", String.class));
-        log.info("sbomContent: " +  object.getObject("sbomContent", String.class).length());
         return generateResultMap;
     }
 
@@ -63,7 +62,6 @@ public class SbomService {
         }
         publishResultMap.put("taskId", object.getObject("taskId", String.class));
         publishResultMap.put("result", "success");
-        log.info("taskId: " +  object.getObject("taskId", String.class));
         return publishResultMap;
     }
 
@@ -90,7 +88,6 @@ public class SbomService {
         }
         queryResultMap.put("sbomRef", object.getObject("sbomRef", String.class));
         queryResultMap.put("result", "success");
-        log.info("sbomRef: " +  object.getObject("sbomRef", String.class));
         return queryResultMap;
     }
 }
