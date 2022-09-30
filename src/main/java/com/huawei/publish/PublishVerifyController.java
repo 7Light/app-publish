@@ -68,34 +68,31 @@ public class PublishVerifyController {
             }
             for (FilePO file : files) {
                 boolean exists = false;
+                boolean deleteTemp = false;
+                String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
                 String targetPath = StringUtils.isEmpty(file.getTargetPath()) ? "" : file.getTargetPath().trim();
+                String fileName = file.getName();
                 if ("obs".equals(publishPO.getUploadType())) {
-                    exists = !verifyService.execCmdAndContainsMessage("obsutil ls " +
-                            publishPO.getObsUrl() + (targetPath + "/" + file.getName())
-                            .replace("//", "/"), "is: 0B");
-                } else {
-                    File targetFile = new File(targetPath + file.getName());
-                    exists = targetFile.exists();
+                    exists = obsUtil.isExist(targetPath + fileName);
                 }
                 if ("skip".equals(publishPO.getConflict()) && exists) {
                     file.setPublishResult("skip");
                     continue;
                 }
-                String fileName = file.getName();
-                String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
-                File fileTempDir = new File(fileTempDirPath);
-                fileTempDir.mkdir();
-                if (!StringUtils.isEmpty(file.getUrl())) {
-                    obsUtil.downFile(file.getUrl(), fileTempDirPath);
+                String verifyMessage = "";
+                if (!fileName.endsWith(".sha256") && !"latest/".equals(file.getParentDir()) && !file.getParentDir().contains(
+                        "binarylibs_update/") && !file.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(fileName)) {
+                    File fileTempDir = new File(fileTempDirPath);
+                    fileTempDir.mkdir();
+                    deleteTemp = true;
+                    obsUtil.downFile(file.getParentDir() + fileName, fileTempDirPath);
                     if (fileName.endsWith(".tar.bz2")) {
-                        file.setSha256(fileDownloadService.getContent(file.getUrl().replace(".tar.bz2", ".sha256"), null));
-                    }else if(!fileName.endsWith(".sha256")) {
-                        file.setSha256(fileDownloadService.getContent(file.getUrl() + ".sha256", null));
+                        obsUtil.downFile(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"), fileTempDirPath);
+                    } else {
+                        obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath);
                     }
-                } else {
-                    fileTempDirPath = file.getUrl();
+                    verifyMessage = verify(fileTempDirPath, file, fileName);
                 }
-                String verifyMessage = verify(fileTempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
                     file.setVerifyResult(verifyMessage);
                     if (!"no signatures".equals(verifyMessage)) {
@@ -106,13 +103,7 @@ public class PublishVerifyController {
                 }
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    uploadSuccess = new ObsUtil().copyObject(file.getUrl(), targetPath);
-                } else {
-                    File targetPathDir = new File(targetPath);
-                    if (!targetPathDir.exists()) {
-                        targetPathDir.mkdirs();
-                    }
-                    verifyService.execCmd("mv " + fileTempDirPath + fileName + " " + targetPath + fileName);
+                    uploadSuccess = new ObsUtil().copyObject(file.getParentDir() + fileName, targetPath + fileName);
                 }
                 if (uploadSuccess) {
                     if (exists) {
@@ -123,7 +114,15 @@ public class PublishVerifyController {
                 } else {
                     file.setPublishResult("fail");
                 }
-                verifyService.execCmd("rm -rf " + fileTempDirPath + fileName);
+                if (deleteTemp) {
+                    if (fileName.endsWith(".tar.bz2")) {
+                        verifyService.execCmd("rm -rf " + fileTempDirPath + fileName);
+                        verifyService.execCmd("rm -rf " + fileTempDirPath + fileName.replace(".tar.bz2", ".sha256"));
+                    } else {
+                        verifyService.execCmd("rm -rf " + fileTempDirPath + fileName);
+                        verifyService.execCmd("rm -rf " + fileTempDirPath + fileName + ".sha256");
+                    }
+                }
             }
             verifyService.execCmd("rm -rf " + tempDirPath);
         } catch (IOException | InterruptedException e) {
@@ -154,7 +153,7 @@ public class PublishVerifyController {
     }
 
     /**
-     * 提供需要发布的文件列表,由FileFromRepoUtil类中的getFiles（）方法请求调用
+     * 提供需要发布的一层文件列表,由FileFromRepoUtil类中的getFiles（）方法请求调用
      *
      * @param path
      * @return
@@ -163,16 +162,15 @@ public class PublishVerifyController {
     public List<FileFromRepoModel> getPublishList(@RequestParam(value = "path") String path) {
         obsUtil = new ObsUtil();
         ArrayList<FileFromRepoModel> result = new ArrayList<>();
-        if (StringUtils.isEmpty(path)) {
-            List<FileFromRepoModel> files = obsUtil.listObjects();
+        List<FileFromRepoModel> files = obsUtil.listObjects(path);
+        if ("latest".equals(path)) {
             for (FileFromRepoModel file : files) {
-                //获取顶层文件
-                if (file.getParentDir() == null) {
+                //获取latest文件
+                if (file.getParentDir() == null && "latest".equals(file.getName())) {
                     result.add(file);
                 }
             }
         } else {
-            List<FileFromRepoModel> files = obsUtil.listObjects(path);
             for (FileFromRepoModel file : files) {
                 //获取内层文件
                 if (path.equals(file.getParentDir())) {
@@ -183,10 +181,36 @@ public class PublishVerifyController {
         return result;
     }
 
+    /**
+     * 提供需要发布的所有文件列表,由FileFromRepoUtil类中的getAllFiles（）方法请求调用
+     *
+     * @param path
+     * @return
+     */
+    @RequestMapping(value = "/getAllPublishList", method = RequestMethod.GET)
+    public List<FileFromRepoModel> getAllPublishList(@RequestParam(value = "path") String path) {
+        obsUtil = new ObsUtil();
+        ArrayList<FileFromRepoModel> result = new ArrayList<>();
+        List<FileFromRepoModel> files = obsUtil.listObjects(path);
+        for (FileFromRepoModel file : files) {
+            if (!file.isDir()) {
+                result.add(file);
+            }
+        }
+        return result;
+    }
+
     private String verify(String tempDirPath, FilePO file, String fileName) throws IOException, InterruptedException {
-        if (fileName.endsWith(".sha256") || "latest/".equals(file.getParentDir()) || file.getParentDir().contains(
-                "binarylibs_update/") || file.getParentDir().contains("binarylibs/") || "git.num.txt".equals(fileName)) {
-            return "";
+        if (StringUtils.isEmpty(file.getSha256())) {
+            String sha256;
+            if (fileName.endsWith(".tar.bz2")) {
+                sha256 = verifyService.execCmd("cat " + tempDirPath + fileName.replace(".tar.bz2", ".sha256"));
+            } else {
+                sha256 = verifyService.execCmd("cat " + tempDirPath + fileName + ".sha256");
+            }
+            if (!sha256.contains("No such file or directory")) {
+                file.setSha256(sha256);
+            }
         }
         if (!StringUtils.isEmpty(file.getSha256())) {
             if (!verifyService.checksum256Verify(tempDirPath + fileName, file.getSha256())) {

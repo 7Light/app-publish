@@ -4,6 +4,15 @@ public class FileFromRepoModel {
     private String name;
     private String parentDir;
     private boolean isDir;
+    private String size;
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    public String getSize() {
+        return size;
+    }
 
     public String getName() {
         return name;

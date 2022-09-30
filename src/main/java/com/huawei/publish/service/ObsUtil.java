@@ -8,6 +8,8 @@ import com.obs.services.model.*;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -61,10 +63,14 @@ public class ObsUtil {
             for (ObsObject object : objectListing.getObjects()) {
                 FileFromRepoModel file = new FileFromRepoModel();
                 String objectKey = object.getObjectKey();
+                ObjectMetadata metadata = object.getMetadata();
                 String pathStr = "/";
                 boolean isDir = objectKey.endsWith(pathStr);
                 if (isDir) {
                     objectKey = objectKey.substring(0, objectKey.length() - 1);
+                    file.setSize("-");
+                } else {
+                    file.setSize(toFormatSize(metadata.getContentLength()));
                 }
                 if (objectKey.contains(pathStr)) {
                     file.setName(objectKey.substring(objectKey.lastIndexOf(pathStr) + 1));
@@ -168,11 +174,48 @@ public class ObsUtil {
                 try {
                     obsClient.close();
                 } catch (IOException e) {
+                    log.error("", e);
                 }
             }
         }
     }
 
+    public boolean isExist(String objectKey) {
+        ObsClient obsClient = new ObsClient(ak, sk, config);
+        try {
+            boolean exist = obsClient.doesObjectExist(bucketName, objectKey);
+            return exist;
+        } catch (ObsException e) {
+            log.error(e.getErrorMessage());
+            return false;
+        } finally {
+            if (obsClient != null) {
+                try {
+                    obsClient.close();
+                } catch (IOException e) {
+                    log.error("", e);
+                }
+            }
+        }
+    }
+
+    private String toFormatSize(Long length) {
+        BigDecimal dividend = new BigDecimal(length);
+        String result = "";
+        if (length == 0) {
+            return "0B";
+        }
+        if (length < 1024) {
+            result = length + "B";
+        } else if (length < 1048576) {
+            result = dividend.divide(new BigDecimal(1024), 2, RoundingMode.HALF_UP) + "KB";
+        } else if (length < 1073741824) {
+            result = dividend.divide(new BigDecimal(1048576), 2, RoundingMode.HALF_UP) + "MB";
+        } else {
+            result = dividend.divide(new BigDecimal(1073741824), 2, RoundingMode.HALF_UP) + "GB";
+        }
+        return result;
+    }
 
     public static void main(String[] args) {
 //        ObsUtil.listObjects("1.7.0/");
