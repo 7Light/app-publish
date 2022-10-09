@@ -96,43 +96,6 @@ public class ObsUtil {
         }
     }
 
-    public List<FileFromRepoModel> listObjects() {
-        ObsClient obsClient = new ObsClient(ak, sk, config);
-        try {
-            ObjectListing objectListing = obsClient.listObjects(bucketName);
-            List<FileFromRepoModel> result = new ArrayList<>();
-            for (ObsObject object : objectListing.getObjects()) {
-                FileFromRepoModel file = new FileFromRepoModel();
-                String objectKey = object.getObjectKey();
-                String pathStr = "/";
-                boolean isDir = objectKey.endsWith(pathStr);
-                if (isDir) {
-                    objectKey = objectKey.substring(0, objectKey.length() - 1);
-                }
-                if (objectKey.contains(pathStr)) {
-                    file.setName(objectKey.substring(objectKey.lastIndexOf(pathStr) + 1));
-                    file.setParentDir(objectKey.substring(0, objectKey.lastIndexOf(pathStr) + 1));
-                } else {
-                    file.setName(objectKey);
-                }
-                file.setDir(isDir);
-                result.add(file);
-            }
-            return result;
-        } catch (ObsException e) {
-            log.error(e.getErrorMessage());
-            return null;
-        } finally {
-            if (obsClient != null) {
-                try {
-                    obsClient.close();
-                } catch (IOException e) {
-                    log.error("", e);
-                }
-            }
-        }
-    }
-
     public void downFile(String obsFullPath, String localFullPath) {
         ObsClient obsClient = new ObsClient(ak, sk, config);
         try {

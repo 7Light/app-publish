@@ -1,11 +1,12 @@
 package com.huawei.publish;
 
-import com.huawei.publish.model.*;
-import com.huawei.publish.service.FileDownloadService;
+import com.huawei.publish.model.FileFromRepoModel;
+import com.huawei.publish.model.FilePO;
+import com.huawei.publish.model.PublishPO;
+import com.huawei.publish.model.PublishResult;
 import com.huawei.publish.service.ObsUtil;
 import com.huawei.publish.service.VerifyService;
 import org.apache.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -22,8 +23,6 @@ import java.util.*;
 public class PublishVerifyController {
     private static Map<String, PublishResult> publishResult = new HashMap<>();
     private static Logger log = Logger.getLogger(PublishVerifyController.class);
-    @Autowired
-    private FileDownloadService fileDownloadService;
     private VerifyService verifyService;
     private ObsUtil obsUtil;
 
@@ -79,6 +78,7 @@ public class PublishVerifyController {
                     file.setPublishResult("skip");
                     continue;
                 }
+                //验签
                 String verifyMessage = "";
                 if (!fileName.endsWith(".sha256") && !"latest/".equals(file.getParentDir()) && !file.getParentDir().contains(
                         "binarylibs_update/") && !file.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(fileName)) {
@@ -101,6 +101,7 @@ public class PublishVerifyController {
                 } else {
                     file.setVerifyResult("success");
                 }
+                //发布
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
                     uploadSuccess = new ObsUtil().copyObject(file.getParentDir() + fileName, targetPath + fileName);
@@ -114,6 +115,7 @@ public class PublishVerifyController {
                 } else {
                     file.setPublishResult("fail");
                 }
+                //删除下载的临时文件
                 if (deleteTemp) {
                     if (fileName.endsWith(".tar.bz2")) {
                         verifyService.execCmd("rm -rf " + fileTempDirPath + fileName);
