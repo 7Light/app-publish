@@ -205,6 +205,9 @@ public class PublishVerifyController {
                 file.setSbomRef(sbomRef);
             }
             sbomResultMap.put(publishId, sbomResult);
+        } else {
+            sbomResult.setResult("publishing");
+            sbomResultMap.put(publishId, sbomResult);
         }
         return sbomResultMap.get(publishId);
     }
