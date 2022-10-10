@@ -16,7 +16,7 @@ import java.util.List;
 
 public class ObsUtil {
     private static Logger log = Logger.getLogger(ObsUtil.class);
-    private static final String endPoint = "obs.cn-south-1.myhuaweicloud.com";
+    private static final String endPoint = "https://obs.cn-south-1.myhuaweicloud.com";
 
     private static final String ak = "G3WBWCPXZGXM2P9EIDKP";
 
@@ -179,10 +179,4 @@ public class ObsUtil {
         }
         return result;
     }
-
-    public static void main(String[] args) {
-//        ObsUtil.listObjects("1.7.0/");
-        new ObsUtil().downFile("xfb/obsutil", "C:\\obsutil");
-    }
-
 }

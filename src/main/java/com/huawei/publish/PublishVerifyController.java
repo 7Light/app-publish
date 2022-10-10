@@ -85,19 +85,19 @@ public class PublishVerifyController {
                     File fileTempDir = new File(fileTempDirPath);
                     fileTempDir.mkdir();
                     deleteTemp = true;
-                    obsUtil.downFile(file.getParentDir() + fileName, fileTempDirPath);
+                    obsUtil.downFile(file.getParentDir() + fileName, fileTempDirPath + fileName);
                     if (fileName.endsWith(".tar.bz2")) {
-                        obsUtil.downFile(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"), fileTempDirPath);
+                        obsUtil.downFile(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"),
+                                fileTempDirPath + fileName.replace(".tar.bz2", ".sha256"));
                     } else {
-                        obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath);
+                        obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath + fileName + ".sha256");
                     }
                     verifyMessage = verify(fileTempDirPath, file, fileName);
                 }
                 if (!StringUtils.isEmpty(verifyMessage)) {
                     file.setVerifyResult(verifyMessage);
-                    if (!"no signatures".equals(verifyMessage)) {
-                        continue;
-                    }
+                    file.setPublishResult("fail");
+                    continue;
                 } else {
                     file.setVerifyResult("success");
                 }
