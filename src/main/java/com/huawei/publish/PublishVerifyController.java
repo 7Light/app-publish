@@ -80,23 +80,36 @@ public class PublishVerifyController {
                 //验签
                 if (!fileName.endsWith(".sha256") && !"latest/".equals(file.getParentDir()) && !file.getParentDir().contains(
                         "binarylibs_update/") && !file.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(fileName)) {
-                    File fileTempDir = new File(fileTempDirPath);
-                    fileTempDir.mkdir();
-                    deleteTemp = true;
-                    obsUtil.downFile(file.getParentDir() + fileName, fileTempDirPath + fileName);
+                    //判断源文件对应的sha256文件是否存在
+                    boolean sha256Exist;
                     if (fileName.endsWith(".tar.bz2")) {
-                        obsUtil.downFile(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"),
-                                fileTempDirPath + fileName.replace(".tar.bz2", ".sha256"));
+                        sha256Exist = obsUtil.isExist(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"));
                     } else {
-                        obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath + fileName + ".sha256");
+                        sha256Exist = obsUtil.isExist(file.getParentDir() + fileName + ".sha256");
                     }
-                    String verifyMessage = verify(fileTempDirPath, file, fileName);
-                    if (!StringUtils.isEmpty(verifyMessage)) {
-                        file.setVerifyResult(verifyMessage);
+                    if (!sha256Exist) {//不存在
+                        file.setVerifyResult("no signatures");
                         file.setPublishResult("fail");
                         continue;
-                    } else {
-                        file.setVerifyResult("success");
+                    } else {//存在则下载源文件及其sha256文件并验签
+                        File fileTempDir = new File(fileTempDirPath);
+                        fileTempDir.mkdir();
+                        deleteTemp = true;
+                        obsUtil.downFile(file.getParentDir() + fileName, fileTempDirPath + fileName);
+                        if (fileName.endsWith(".tar.bz2")) {
+                            obsUtil.downFile(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"),
+                                    fileTempDirPath + fileName.replace(".tar.bz2", ".sha256"));
+                        } else {
+                            obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath + fileName + ".sha256");
+                        }
+                        String verifyMessage = verify(fileTempDirPath, file, fileName);
+                        if (!StringUtils.isEmpty(verifyMessage)) {
+                            file.setVerifyResult(verifyMessage);
+                            file.setPublishResult("fail");
+                            continue;
+                        } else {
+                            file.setVerifyResult("success");
+                        }
                     }
                 }
                 //发布源文件
@@ -217,18 +230,12 @@ public class PublishVerifyController {
             } else {
                 sha256 = verifyService.execCmd("cat " + tempDirPath + fileName + ".sha256");
             }
-            if (!sha256.contains("No such file or directory")) {
-                file.setSha256(sha256);
-            }
+            file.setSha256(sha256);
         }
-        if (!StringUtils.isEmpty(file.getSha256())) {
-            if (!verifyService.checksum256Verify(tempDirPath + fileName, file.getSha256())) {
-                return fileName + " checksum check failed.";
-            } else {
-                return "";
-            }
+        if (!verifyService.checksum256Verify(tempDirPath + fileName, file.getSha256())) {
+            return fileName + " checksum check failed.";
         }
-        return "no signatures";
+        return "";
     }
 
     private String validate(PublishPO publishPO) {
