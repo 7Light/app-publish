@@ -101,10 +101,21 @@ public class PublishVerifyController {
                 } else {
                     file.setVerifyResult("success");
                 }
-                //发布
+                //发布源文件
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    uploadSuccess = new ObsUtil().copyObject(file.getParentDir() + fileName, targetPath + fileName);
+                    //发布源文件
+                    if (!fileName.endsWith(".sha256")) {
+                        uploadSuccess = obsUtil.copyObject(file.getParentDir() + fileName, targetPath + fileName);
+                    } else { //根据源文件是否已发布，判断是否发布源文件对应的sha256文件
+                        boolean sha256Publish = obsUtil.isExist(targetPath + fileName.replace(".sha256", ""))
+                                || obsUtil.isExist(targetPath + fileName.replace(".sha256", ".tar.bz2"));
+                        if (sha256Publish) {
+                            uploadSuccess = obsUtil.copyObject(file.getParentDir() + fileName, targetPath + fileName);
+                        } else {
+                            uploadSuccess = false;
+                        }
+                    }
                 }
                 if (uploadSuccess) {
                     if (exists) {

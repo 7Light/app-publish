@@ -27,7 +27,6 @@ public class PublishPO {
     }
 
     List<FilePO> files;
-    private List<RepoIndex> repoIndexList;
 
     public String getGpgKeyUrl() {
         return gpgKeyUrl;
@@ -75,14 +74,6 @@ public class PublishPO {
 
     public void setFiles(List<FilePO> files) {
         this.files = files;
-    }
-
-    public List<RepoIndex> getRepoIndexList() {
-        return repoIndexList;
-    }
-
-    public void setRepoIndexList(List<RepoIndex> repoIndexList) {
-        this.repoIndexList = repoIndexList;
     }
 
     public String getConflict() {
