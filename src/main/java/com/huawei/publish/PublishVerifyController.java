@@ -24,7 +24,7 @@ public class PublishVerifyController {
     private static Map<String, PublishResult> publishResult = new HashMap<>();
     private static Logger log = Logger.getLogger(PublishVerifyController.class);
     private VerifyService verifyService;
-    private ObsUtil obsUtil;
+    private static ObsUtil obsUtil = new ObsUtil();
 
     /**
      * heartbeat
@@ -57,7 +57,6 @@ public class PublishVerifyController {
         verifyService = new VerifyService(publishPO);
         List<FilePO> files = publishPO.getFiles();
         String tempDirPath = publishPO.getTempDir();
-        obsUtil = new ObsUtil();
         try {
             if (!StringUtils.isEmpty(tempDirPath)) {
                 File tempDir = new File(tempDirPath);
@@ -79,7 +78,6 @@ public class PublishVerifyController {
                     continue;
                 }
                 //验签
-                String verifyMessage = "";
                 if (!fileName.endsWith(".sha256") && !"latest/".equals(file.getParentDir()) && !file.getParentDir().contains(
                         "binarylibs_update/") && !file.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(fileName)) {
                     File fileTempDir = new File(fileTempDirPath);
@@ -92,14 +90,14 @@ public class PublishVerifyController {
                     } else {
                         obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath + fileName + ".sha256");
                     }
-                    verifyMessage = verify(fileTempDirPath, file, fileName);
-                }
-                if (!StringUtils.isEmpty(verifyMessage)) {
-                    file.setVerifyResult(verifyMessage);
-                    file.setPublishResult("fail");
-                    continue;
-                } else {
-                    file.setVerifyResult("success");
+                    String verifyMessage = verify(fileTempDirPath, file, fileName);
+                    if (!StringUtils.isEmpty(verifyMessage)) {
+                        file.setVerifyResult(verifyMessage);
+                        file.setPublishResult("fail");
+                        continue;
+                    } else {
+                        file.setVerifyResult("success");
+                    }
                 }
                 //发布源文件
                 boolean uploadSuccess = true;
@@ -173,7 +171,6 @@ public class PublishVerifyController {
      */
     @RequestMapping(value = "/getPublishList", method = RequestMethod.GET)
     public List<FileFromRepoModel> getPublishList(@RequestParam(value = "path") String path) {
-        obsUtil = new ObsUtil();
         ArrayList<FileFromRepoModel> result = new ArrayList<>();
         List<FileFromRepoModel> files = obsUtil.listObjects(path);
         if ("latest".equals(path)) {
@@ -202,7 +199,6 @@ public class PublishVerifyController {
      */
     @RequestMapping(value = "/getAllPublishList", method = RequestMethod.GET)
     public List<FileFromRepoModel> getAllPublishList(@RequestParam(value = "path") String path) {
-        obsUtil = new ObsUtil();
         ArrayList<FileFromRepoModel> result = new ArrayList<>();
         List<FileFromRepoModel> files = obsUtil.listObjects(path);
         for (FileFromRepoModel file : files) {
