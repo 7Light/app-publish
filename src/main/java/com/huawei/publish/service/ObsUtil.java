@@ -16,16 +16,11 @@ import java.util.List;
 
 public class ObsUtil {
     private static Logger log = Logger.getLogger(ObsUtil.class);
-    private static final String endPoint = "https://obs.cn-south-1.myhuaweicloud.com";
-
-    private static final String ak = "G3WBWCPXZGXM2P9EIDKP";
-
-    private static final String sk = "jKBChm1BEiH64oP7WdwPmDHOmcRRPd08rk90rbzC";
-
+    private static final String endPoint = System.getenv("endPoint");
+    private static final String ak = System.getenv("ak");
+    private static final String sk = System.getenv("sk");
     private ObsConfiguration config;
-
-    private static String bucketName = "openlibing-test";
-
+    private static String bucketName = System.getenv("bucketName");
 
     public ObsUtil() {
         config = new ObsConfiguration();
