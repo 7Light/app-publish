@@ -152,99 +152,48 @@ public class PublishVerifyController {
         return publishResult.get(publishId);
     }
 
-//    @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.GET)
-//    public SbomResultPO querySbomPublishResult(@RequestParam(value = "publishId", required = true) String publishId
-//    ,@RequestParam(value = "querySbomPublishResultUrl", required = true) String querySbomPublishResultUrl) {
-//        SbomResultPO sbomResult = sbomResultMap.get(publishId);
-//        if(sbomResult != null){
-//            if(sbomResult.getTaskId() == null){
-//                return sbomResult;
-//            }
-//            Map<String, String> taskIdMap = sbomResult.getTaskId();
-//            Map<String, String> sbomRefMap = new HashMap<>();
-//            for(String key : taskIdMap.keySet()){
-//                String value = taskIdMap.get(key);
-//                Map<String, String> queryResult = sbomService.querySbomPublishResult(
-//                    querySbomPublishResultUrl + "/" + value);
-//                sbomResult.setResult(queryResult.get("result"));
-//                if(!"success".equals(queryResult.get("result"))){
-//                    sbomResult.setMessage(queryResult.get("errorInfo"));
-//                    sbomResultMap.put(publishId, sbomResult);
-//                    return sbomResult;
-//                }
-//                sbomRefMap.put(key, queryResult.get("sbomRef"));
-//            }
-//            for (FilePO file : sbomResult.getFiles()) {
-//                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
-//            }
-//            sbomResultMap.put(publishId, sbomResult);
-//        }
-//        return sbomResultMap.get(publishId);
-//    }
-
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.GET)
     public SbomResultPO querySbomPublishResult(@RequestParam(value = "publishId", required = true) String publishId
-        ,@RequestParam(value = "querySbomPublishResultUrl", required = true) String querySbomPublishResultUrl) {
+    ,@RequestParam(value = "querySbomPublishResultUrl", required = true) String querySbomPublishResultUrl) {
         SbomResultPO sbomResult = sbomResultMap.get(publishId);
-        if(sbomResult != null) {
-            if (sbomResult.getTaskId() == null) {
+        if(sbomResult != null){
+            if(sbomResult.getTaskId() == null){
+                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
+                    && sbomResult.getMessage().contains("请求异常")){
+                    // 请求异常，再次发起
+                    sbomResultAsync(sbomResult.getPublishPO(), sbomResult.getFiles());
+                }
                 return sbomResult;
             }
-            String artifactPath = "/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso";
-            String taskId = sbomResult.getTaskId().get(artifactPath);
-            Map<String, String> queryResult = sbomService.querySbomPublishResult(
-                querySbomPublishResultUrl + "/" + taskId);
-            sbomResult.setResult(queryResult.get("result"));
-            if(!"success".equals(queryResult.get("result"))){
-                sbomResult.setMessage(queryResult.get("errorInfo"));
-                sbomResultMap.put(publishId, sbomResult);
-                return sbomResult;
+            Map<String, String> taskIdMap = sbomResult.getTaskId();
+            Map<String, String> sbomRefMap = new HashMap<>();
+            for(String key : taskIdMap.keySet()){
+                String value = taskIdMap.get(key);
+                Map<String, String> queryResult = sbomService.querySbomPublishResult(
+                    querySbomPublishResultUrl + "/" + value);
+                sbomResult.setResult(queryResult.get("result"));
+                if(!"success".equals(queryResult.get("result"))){
+                    sbomResult.setMessage(queryResult.get("errorInfo"));
+                    sbomResultMap.put(publishId, sbomResult);
+                    return sbomResult;
+                }
+                sbomResult.setMessage("");
+                sbomRefMap.put(key, queryResult.get("sbomRef"));
             }
-            String sbomRef = queryResult.get("sbomRef");
             for (FilePO file : sbomResult.getFiles()) {
-                file.setSbomRef(sbomRef);
+                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
             }
             sbomResultMap.put(publishId, sbomResult);
         } else {
+            // 刚提交发布页面刷新，sbom接口还生成中。无法查询结果
+            sbomResult = new SbomResultPO();
             sbomResult.setResult("publishing");
             sbomResultMap.put(publishId, sbomResult);
         }
         return sbomResultMap.get(publishId);
     }
+
     public void sbomResultAsync(PublishPO publishPO, List<FilePO> files) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                String artifactPath = "/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso";
-                String productName = "openEuler-22.03-LTS-x86_64-dvd.iso";
-                Map<String, String> taskId = new HashMap<>();
-                SbomResultPO sbomResult = new SbomResultPO();
-                sbomResult.setResult("success");
-                sbomResult.setFiles(files);
-                Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO, artifactPath);
-                if(!"success".equals(generateResult.get("result"))){
-                    sbomResult.setResult(generateResult.get("result"));
-                    sbomResult.setMessage(generateResult.get("errorInfo"));
-                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-                    return;
-                }
-                Map<String, String> publishResult = sbomService.publishSbomFile(publishPO,
-                    generateResult.get("sbomContent"), productName);
-                if(!"success".equals(publishResult.get("result"))){
-                    sbomResult.setResult(publishResult.get("result"));
-                    sbomResult.setMessage(publishResult.get("errorInfo"));
-                    sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-                    return;
-                }
-                taskId.put(artifactPath, publishResult.get("taskId"));
-                sbomResult.setTaskId(taskId);
-                sbomResultMap.put(publishPO.getPublishId(), sbomResult);
-            }
-            }).start();
-
-    }
-
-    public void sbomResultAsync1(PublishPO publishPO, List<FilePO> files) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -253,17 +202,30 @@ public class PublishVerifyController {
                 SbomResultPO sbomResult = new SbomResultPO();
                 sbomResult.setResult("success");
                 sbomResult.setFiles(files);
+                sbomResult.setPublishPO(publishPO);
                 for (String artifactPath : artifactPaths) {
                     Map<String, String> generateResult = sbomService.generateOpeneulerSbom(publishPO, artifactPath);
-                    if(!"success".equals(generateResult.get("result"))){
+                    if (!"success".equals(generateResult.get("result"))) {
                         sbomResult.setResult(generateResult.get("result"));
                         sbomResult.setMessage(generateResult.get("errorInfo"));
                         sbomResultMap.put(publishPO.getPublishId(), sbomResult);
                         return;
                     }
+                    String productName = artifactPath;
+                    if (productName.contains("/update/")) {
+                        // 更新文件夹
+                        productName = productName.substring(productName.indexOf("/repo/openeuler") + 15);
+                    } else if (productName.endsWith(".iso")) {
+                        // 镜像文件   注：目前不涉及
+                        productName = productName.substring(productName.lastIndexOf("/") + 1);
+                    }
                     Map<String, String> publishResult = sbomService.publishSbomFile(publishPO,
-                        generateResult.get("sbomContent"), artifactPath);
-                    if(!"success".equals(publishResult.get("result"))){
+                        generateResult.get("sbomContent"), productName);
+                    if (!"success".equals(publishResult.get("result"))) {
+                        if (publishResult.get("errorInfo").contains("has sbom import job in running")) {
+                            // 发布任务正在进行中
+                            return;
+                        }
                         sbomResult.setResult(publishResult.get("result"));
                         sbomResult.setMessage(publishResult.get("errorInfo"));
                         sbomResultMap.put(publishPO.getPublishId(), sbomResult);

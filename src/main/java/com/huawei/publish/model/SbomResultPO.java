@@ -12,6 +12,16 @@ public class SbomResultPO {
 
     private List<FilePO> files;
 
+    private PublishPO publishPO;
+
+    public PublishPO getPublishPO() {
+        return publishPO;
+    }
+
+    public void setPublishPO(PublishPO publishPO) {
+        this.publishPO = publishPO;
+    }
+
     public Map<String, String> getTaskId() {
         return taskId;
     }
