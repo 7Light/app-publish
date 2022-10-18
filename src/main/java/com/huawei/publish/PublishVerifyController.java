@@ -160,7 +160,12 @@ public class PublishVerifyController {
                 if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
                     && sbomResult.getMessage().contains("请求异常")){
                     // 请求异常，再次发起
-                    sbomResultAsync(sbomResult.getSbomPO(), sbomResult.getFiles());
+                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+                    List<FilePO> files = publishResult.getFiles();
+                    for (FilePO file : sbomResult.getFiles()) {
+                        file.setTargetPath("/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso");
+                    }
+                    sbomResultAsync(sbomPO, files);
                 }
                 return sbomResult;
             }
@@ -202,7 +207,8 @@ public class PublishVerifyController {
                 if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
                     && sbomResult.getMessage().contains("请求异常")){
                     // 请求异常，再次发起
-                    sbomResultAsync(sbomResult.getSbomPO(), sbomResult.getFiles());
+                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+                    sbomResultAsync(sbomPO, publishResult.getFiles());
                 }
                 return sbomResult;
             }
