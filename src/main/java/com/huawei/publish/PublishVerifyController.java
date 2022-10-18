@@ -191,7 +191,7 @@ public class PublishVerifyController {
             sbomResultMap.put(publishId, sbomResult);
             PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
             List<FilePO> files = publishResult.getFiles();
-            for (FilePO file : sbomResult.getFiles()) {
+            for (FilePO file : files) {
                 file.setTargetPath("/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso");
             }
             sbomResultAsync(sbomPO, files);
