@@ -12,14 +12,14 @@ public class SbomResultPO {
 
     private List<FilePO> files;
 
-    private PublishPO publishPO;
+    private SbomPO sbomPO;
 
-    public PublishPO getPublishPO() {
-        return publishPO;
+    public SbomPO getSbomPO() {
+        return sbomPO;
     }
 
-    public void setPublishPO(PublishPO publishPO) {
-        this.publishPO = publishPO;
+    public void setSbomPO(SbomPO sbomPO) {
+        this.sbomPO = sbomPO;
     }
 
     public Map<String, String> getTaskId() {

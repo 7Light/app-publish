@@ -4,6 +4,24 @@ public class SbomPO {
     private String generateSbomUrl;
     private String publishSbomUrl;
     private String querySbomPublishResultUrl;
+    private String publishId;
+    private String publishResultDetail;
+
+    public String getPublishResultDetail() {
+        return publishResultDetail;
+    }
+
+    public void setPublishResultDetail(String publishResultDetail) {
+        this.publishResultDetail = publishResultDetail;
+    }
+
+    public String getPublishId() {
+        return publishId;
+    }
+
+    public void setPublishId(String publishId) {
+        this.publishId = publishId;
+    }
 
     public String getQuerySbomPublishResultUrl() {
         return querySbomPublishResultUrl;

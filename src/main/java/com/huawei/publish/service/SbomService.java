@@ -2,7 +2,6 @@ package com.huawei.publish.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.huawei.publish.model.PublishPO;
 import com.huawei.publish.model.SbomPO;
 import com.huawei.publish.utils.HttpRequestUtil;
 import org.apache.log4j.Logger;
@@ -17,13 +16,12 @@ public class SbomService {
     /**
      * SBOM生成
      *
-     * @param publishPO 参数
+     * @param sbomPO 参数
      * @return Map SBOM生成接口结果
      */
-    public Map<String, String> generateOpeneulerSbom(PublishPO publishPO, String artifactPath) {
+    public Map<String, String> generateOpeneulerSbom(SbomPO sbomPO, String artifactPath) {
         Map<String, String> generateResultMap = new HashMap<>();
         Map<String, String> paramMap = new HashMap<>();
-        SbomPO sbomPO = publishPO.getSbom();
         paramMap.put("artifactPath", artifactPath);
         String paramJson= JSON.toJSONString(paramMap);
         String responseContent = HttpRequestUtil.doPost(sbomPO.getGenerateSbomUrl(), paramJson);
@@ -55,13 +53,12 @@ public class SbomService {
     /**
      * SBOM发布接口
      *
-     * @param publishPO 参数
+     * @param sbomPO 参数
      * @param sbomContent SBOM文本内容
      * @return Map SBOM发布结果
      */
-    public Map<String, String> publishSbomFile(PublishPO publishPO, String sbomContent, String productName) {
+    public Map<String, String> publishSbomFile(SbomPO sbomPO, String sbomContent, String productName) {
         Map<String, String> paramMap = new HashMap<>();
-        SbomPO sbomPO = publishPO.getSbom();
         paramMap.put("productName", productName);
         paramMap.put("sbomContent", sbomContent);
         //定义发送数据
