@@ -156,53 +156,6 @@ public class PublishVerifyController {
     public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
         String publishId = sbomPO.getPublishId();
         SbomResultPO sbomResult = sbomResultMap.get(publishId);
-        if(sbomResult != null) {
-            if (sbomResult.getTaskId() == null) {
-                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
-                    && sbomResult.getMessage().contains("请求异常")){
-                    // 请求异常，再次发起
-                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-                    List<FilePO> files = publishResult.getFiles();
-                    for (FilePO file : files) {
-                        file.setTargetPath("/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso");
-                    }
-                    sbomResultAsync(sbomPO, files);
-                }
-                return sbomResult;
-            }
-            String artifactPath = "/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso";
-            String taskId = sbomResult.getTaskId().get(artifactPath);
-            Map<String, String> queryResult = sbomService.querySbomPublishResult(
-                sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
-            sbomResult.setResult(queryResult.get("result"));
-            if(!"success".equals(queryResult.get("result"))){
-                sbomResult.setMessage(queryResult.get("errorInfo"));
-                sbomResultMap.put(publishId, sbomResult);
-                return sbomResult;
-            }
-            String sbomRef = queryResult.get("sbomRef");
-            for (FilePO file : sbomResult.getFiles()) {
-                file.setSbomRef(sbomRef);
-            }
-            sbomResultMap.put(publishId, sbomResult);
-        } else {
-            sbomResult = new SbomResultPO();
-            sbomResult.setResult("publishing");
-            sbomResult.setMessage("Start sbom task success.");
-            sbomResultMap.put(publishId, sbomResult);
-            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-            List<FilePO> files = publishResult.getFiles();
-            for (FilePO file : files) {
-                file.setTargetPath("/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso");
-            }
-            sbomResultAsync(sbomPO, files);
-        }
-        return sbomResultMap.get(publishId);
-    }
-    @RequestMapping(value = "/querySbomPublishResult１", method = RequestMethod.POST)
-    public SbomResultPO querySbomPublishResult１(@RequestBody SbomPO sbomPO) {
-        String publishId = sbomPO.getPublishId();
-        SbomResultPO sbomResult = sbomResultMap.get(publishId);
         if (sbomResult != null) {
             if (sbomResult.getTaskId() == null) {
                 if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
