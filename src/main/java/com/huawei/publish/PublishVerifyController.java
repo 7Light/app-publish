@@ -79,7 +79,7 @@ public class PublishVerifyController {
                 }
                 //验签
                 if (!fileName.endsWith(".sha256") && !"latest/".equals(file.getParentDir()) && !file.getParentDir().contains(
-                        "binarylibs_update/") && !file.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(fileName)) {
+                    "binarylibs_update/") && !file.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(fileName)) {
                     //判断源文件对应的sha256文件是否存在
                     boolean sha256Exist;
                     if (fileName.endsWith(".tar.bz2")) {
@@ -98,7 +98,7 @@ public class PublishVerifyController {
                         obsUtil.downFile(file.getParentDir() + fileName, fileTempDirPath + fileName);
                         if (fileName.endsWith(".tar.bz2")) {
                             obsUtil.downFile(file.getParentDir() + fileName.replace(".tar.bz2", ".sha256"),
-                                    fileTempDirPath + fileName.replace(".tar.bz2", ".sha256"));
+                                fileTempDirPath + fileName.replace(".tar.bz2", ".sha256"));
                         } else {
                             obsUtil.downFile(file.getParentDir() + fileName + ".sha256", fileTempDirPath + fileName + ".sha256");
                         }
@@ -115,18 +115,7 @@ public class PublishVerifyController {
                 //发布源文件
                 boolean uploadSuccess = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    //发布源文件
-                    if (!fileName.endsWith(".sha256")) {
-                        uploadSuccess = obsUtil.copyObject(file.getParentDir() + fileName, targetPath + fileName);
-                    } else { //根据源文件是否已发布，判断是否发布源文件对应的sha256文件
-                        boolean sha256Publish = obsUtil.isExist(targetPath + fileName.replace(".sha256", ""))
-                                || obsUtil.isExist(targetPath + fileName.replace(".sha256", ".tar.bz2"));
-                        if (sha256Publish) {
-                            uploadSuccess = obsUtil.copyObject(file.getParentDir() + fileName, targetPath + fileName);
-                        } else {
-                            uploadSuccess = false;
-                        }
-                    }
+                    uploadSuccess = obsUtil.copyObject(file.getParentDir() + fileName, targetPath + fileName);
                 }
                 if (uploadSuccess) {
                     if (exists) {
@@ -186,6 +175,9 @@ public class PublishVerifyController {
     public List<FileFromRepoModel> getPublishList(@RequestParam(value = "path") String path) {
         ArrayList<FileFromRepoModel> result = new ArrayList<>();
         List<FileFromRepoModel> files = obsUtil.listObjects(path);
+        if (CollectionUtils.isEmpty(files)) {
+            return Collections.emptyList();
+        }
         if ("latest".equals(path)) {
             for (FileFromRepoModel file : files) {
                 //获取latest文件
@@ -214,6 +206,9 @@ public class PublishVerifyController {
     public List<FileFromRepoModel> getAllPublishList(@RequestParam(value = "path") String path) {
         ArrayList<FileFromRepoModel> result = new ArrayList<>();
         List<FileFromRepoModel> files = obsUtil.listObjects(path);
+        if (CollectionUtils.isEmpty(files)) {
+            return Collections.emptyList();
+        }
         for (FileFromRepoModel file : files) {
             if (!file.isDir()) {
                 result.add(file);
