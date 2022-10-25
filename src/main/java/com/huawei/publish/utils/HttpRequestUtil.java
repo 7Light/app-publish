@@ -35,7 +35,7 @@ public class HttpRequestUtil {
     public static String doPost(String url, String paramJson) {
         String responseContent  = null;
         // 创建Http Post请求
-        HttpPost httpPost = new HttpPost(url);
+        HttpPost httpPost = new HttpPost(url.trim());
         httpPost.setProtocolVersion(HttpVersion.HTTP_1_0);
         httpPost.setHeader(HTTP.CONTENT_TYPE, "application/json");
         try  {
@@ -60,7 +60,7 @@ public class HttpRequestUtil {
     public static String doGet (String urlStr) {
         String responseContent  = null;
         //构造httpGet对象
-        HttpGet httpGet = new HttpGet(urlStr);
+        HttpGet httpGet = new HttpGet(urlStr.trim());
         try{
             CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
             //构造响应对象

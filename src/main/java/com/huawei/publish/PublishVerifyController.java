@@ -151,6 +151,7 @@ public class PublishVerifyController {
     public PublishResult getPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
         return publishResult.get(publishId);
     }
+
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
     public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
         String publishId = sbomPO.getPublishId();
@@ -162,7 +163,7 @@ public class PublishVerifyController {
                     // 请求异常，再次发起
                     PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
                     List<FilePO> files = publishResult.getFiles();
-                    for (FilePO file : sbomResult.getFiles()) {
+                    for (FilePO file : files) {
                         file.setTargetPath("/opt/repo-data/openEuler-22.03-LTS/ISO/x86_64/openEuler-22.03-LTS-x86_64-dvd.iso");
                     }
                     sbomResultAsync(sbomPO, files);
@@ -198,50 +199,49 @@ public class PublishVerifyController {
         }
         return sbomResultMap.get(publishId);
     }
-
-//    @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
-//    public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
-//        String publishId = sbomPO.getPublishId();
-//        SbomResultPO sbomResult = sbomResultMap.get(publishId);
-//        if (sbomResult != null) {
-//            if (sbomResult.getTaskId() == null) {
-//                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
-//                    && sbomResult.getMessage().contains("请求异常")){
-//                    // 请求异常，再次发起
-//                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-//                    sbomResultAsync(sbomPO, publishResult.getFiles());
-//                }
-//                return sbomResult;
-//            }
-//            Map<String, String> taskIdMap = sbomResult.getTaskId();
-//            Map<String, String> sbomRefMap = new HashMap<>();
-//            for (String key : taskIdMap.keySet()) {
-//                String taskId = taskIdMap.get(key);
-//                Map<String, String> queryResult = sbomService.querySbomPublishResult(
-//                    sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
-//                sbomResult.setResult(queryResult.get("result"));
-//                if(!"success".equals(queryResult.get("result"))){
-//                    sbomResult.setMessage(queryResult.get("errorInfo"));
-//                    sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
-//                    return sbomResult;
-//                }
-//                sbomResult.setMessage("");
-//                sbomRefMap.put(key, queryResult.get("sbomRef"));
-//            }
-//            for (FilePO file : sbomResult.getFiles()) {
-//                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
-//            }
-//            sbomResultMap.put(publishId, sbomResult);
-//        } else {
-//            sbomResult = new SbomResultPO();
-//            sbomResult.setResult("publishing");
-//            sbomResult.setMessage("Start sbom task success.");
-//            sbomResultMap.put(publishId, sbomResult);
-//            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-//            sbomResultAsync(sbomPO, publishResult.getFiles());
-//        }
-//        return sbomResultMap.get(publishId);
-//    }
+    @RequestMapping(value = "/querySbomPublishResult１", method = RequestMethod.POST)
+    public SbomResultPO querySbomPublishResult１(@RequestBody SbomPO sbomPO) {
+        String publishId = sbomPO.getPublishId();
+        SbomResultPO sbomResult = sbomResultMap.get(publishId);
+        if (sbomResult != null) {
+            if (sbomResult.getTaskId() == null) {
+                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())
+                    && sbomResult.getMessage().contains("请求异常")){
+                    // 请求异常，再次发起
+                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+                    sbomResultAsync(sbomPO, publishResult.getFiles());
+                }
+                return sbomResult;
+            }
+            Map<String, String> taskIdMap = sbomResult.getTaskId();
+            Map<String, String> sbomRefMap = new HashMap<>();
+            for (String key : taskIdMap.keySet()) {
+                String taskId = taskIdMap.get(key);
+                Map<String, String> queryResult = sbomService.querySbomPublishResult(
+                    sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
+                sbomResult.setResult(queryResult.get("result"));
+                if(!"success".equals(queryResult.get("result"))){
+                    sbomResult.setMessage(queryResult.get("errorInfo"));
+                    sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
+                    return sbomResult;
+                }
+                sbomResult.setMessage("");
+                sbomRefMap.put(key, queryResult.get("sbomRef"));
+            }
+            for (FilePO file : sbomResult.getFiles()) {
+                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
+            }
+            sbomResultMap.put(publishId, sbomResult);
+        } else {
+            sbomResult = new SbomResultPO();
+            sbomResult.setResult("publishing");
+            sbomResult.setMessage("Start sbom task success.");
+            sbomResultMap.put(publishId, sbomResult);
+            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+            sbomResultAsync(sbomPO, publishResult.getFiles());
+        }
+        return sbomResultMap.get(publishId);
+    }
 
     public void sbomResultAsync(SbomPO sbomPO, List<FilePO> files) {
         new Thread(new Runnable() {
