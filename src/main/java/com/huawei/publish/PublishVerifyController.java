@@ -86,16 +86,20 @@ public class PublishVerifyController {
                     continue;
                 }
                 FilePO sourceFile = filePOS.get(0);// 源文件
+                FilePO sha256File = filePOS.get(1);// sha256文件
+                FilePO ascFile = filePOS.get(2);// asc文件
                 String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
                 String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
                 //判断文件是否存在于发布路径
-                boolean exists = true;
+                boolean sourceExists = true;
+                boolean sha256Exists = true;
+                boolean ascExists = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    for (FilePO filePO : filePOS) {
-                        exists = exists && obsUtil.isExist(targetPath + filePO.getName());
-                    }
+                    sourceExists = obsUtil.isExist(targetPath + sourceFile.getName());
+                    sha256Exists = obsUtil.isExist(targetPath + sha256File.getName());
+                    ascExists = obsUtil.isExist(targetPath + ascFile.getName());
                 }
-                if ("skip".equals(publishPO.getConflict()) && exists) {
+                if ("skip".equals(publishPO.getConflict()) && sourceExists && sha256Exists && ascExists) {
                     for (FilePO file : filePOS) {
                         file.setPublishResult("skip");
                     }
@@ -110,9 +114,9 @@ public class PublishVerifyController {
                 // 发布
                 if (deleteTemp) {
                     if ("obs".equals(publishPO.getUploadType())) {
-                        for (FilePO filePO : filePOS) {
-                            publishFile(filePO, targetPath, exists);
-                        }
+                        publishFile(sourceFile, targetPath, sourceExists);
+                        publishFile(sha256File, targetPath, sha256Exists);
+                        publishFile(ascFile, targetPath, ascExists);
                     }
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath);
@@ -356,7 +360,7 @@ public class PublishVerifyController {
     }
 
     private String verify(String fileTempDirPath, FilePO sourceFile, FilePO sha256File, FilePO ascFile) throws IOException, InterruptedException {
-        if (!verifyService.fileVerify(fileTempDirPath + ascFile.getName(), fileTempDirPath + sha256File.getName())) {
+        if (!verifyService.fileVerify(ascFile.getName(), sha256File.getName())) {
             return sha256File.getName() + " asc signatures not OK.";
         }
         if (StringUtils.isEmpty(sourceFile.getSha256())) {

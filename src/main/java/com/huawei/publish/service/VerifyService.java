@@ -99,7 +99,7 @@ public class VerifyService {
     public boolean fileVerify(String ascFileName, String fileName) {
         try {
             if (!execCmd("gpg -k | grep " + fileKey).contains(fileKey)) {
-                execCmd("wget " + gpgKeyUrl);
+                execCmd("wget -O RPM-GPG-KEY-openGauss" + gpgKeyUrl);
                 execCmd("gpg --import " + keyFileName);
             }
             return execCmd("gpg --verify " + ascFileName + " " + fileName).contains("Primary key fingerprint");
