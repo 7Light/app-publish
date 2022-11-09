@@ -92,19 +92,18 @@ public class VerifyService {
     /**
      * verify asc file
      *
-     * @param ascFileName asc file
-     * @param fileName  file
+     * @param filePath asc file path
      * @return success
      */
-    public boolean fileVerify(String ascFileName, String fileName) {
+    public boolean fileVerify(String filePath) {
         try {
             if (!execCmd("gpg -k | grep " + fileKey).contains(fileKey)) {
                 execCmd("wget -O RPM-GPG-KEY-openGauss" + gpgKeyUrl);
                 execCmd("gpg --import " + keyFileName);
             }
-            return execCmd("gpg --verify " + ascFileName + " " + fileName).contains("Primary key fingerprint");
+            return execCmd("gpg --verify " + filePath).contains("Primary key fingerprint");
         } catch (Exception e) {
-            log.error("rpm verify error,file:" + fileName + " error:" + e.getMessage());
+            log.error("rpm verify error,file:" + filePath + " error:" + e.getMessage());
         }
         return false;
     }

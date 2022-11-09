@@ -82,31 +82,24 @@ public class PublishVerifyController {
                 }
             }
             for (List<FilePO> filePOS : filePOList) {
-                if (!isMissing(filePOS)) {
-                    continue;
-                }
                 FilePO sourceFile = filePOS.get(0);// 源文件
-                FilePO sha256File = filePOS.get(1);// sha256文件
-                FilePO ascFile = filePOS.get(2);// asc文件
                 String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
                 String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
                 //判断文件是否存在于发布路径
-                boolean sourceExists = true;
-                boolean sha256Exists = true;
-                boolean ascExists = true;
+                boolean exists = true;
                 if ("obs".equals(publishPO.getUploadType())) {
-                    sourceExists = obsUtil.isExist(targetPath + sourceFile.getName());
-                    sha256Exists = obsUtil.isExist(targetPath + sha256File.getName());
-                    ascExists = obsUtil.isExist(targetPath + ascFile.getName());
+                    for (FilePO filePO : filePOS) {
+                        exists = exists && obsUtil.isExist(targetPath + filePO.getName());
+                    }
                 }
-                if ("skip".equals(publishPO.getConflict()) && sourceExists && sha256Exists && ascExists) {
+                if ("skip".equals(publishPO.getConflict()) && exists) {
                     for (FilePO file : filePOS) {
                         file.setPublishResult("skip");
                     }
                     continue;
                 }
                 // 验签
-                boolean deleteTemp = false;
+                boolean deleteTemp = true;
                 if (!"latest/".equals(sourceFile.getParentDir()) && !sourceFile.getParentDir().contains("binarylibs_update/")
                     && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())) {
                     deleteTemp = verifySignature(filePOS, fileTempDirPath);
@@ -114,9 +107,9 @@ public class PublishVerifyController {
                 // 发布
                 if (deleteTemp) {
                     if ("obs".equals(publishPO.getUploadType())) {
-                        publishFile(sourceFile, targetPath, sourceExists);
-                        publishFile(sha256File, targetPath, sha256Exists);
-                        publishFile(ascFile, targetPath, ascExists);
+                        for (FilePO filePO : filePOS) {
+                            publishFile(filePO, targetPath, exists);
+                        }
                     }
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath);
@@ -270,6 +263,47 @@ public class PublishVerifyController {
     }
 
     /**
+     * 文件验签
+     *
+     * @param filePOS         源文件、sha256文件、asc文件
+     * @param fileTempDirPath 文件临时下载路径
+     * @return 是否验签成功
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath) throws IOException, InterruptedException {
+        if (!isMissing(filePOS)) {
+            return false;
+        }
+        FilePO sourceFile = filePOS.get(0);// 源文件
+        FilePO sha256File = filePOS.get(1);// sha256文件
+        FilePO ascFile = filePOS.get(2);// asc文件
+        File fileTempDir = new File(fileTempDirPath);
+        fileTempDir.mkdir();
+        for (FilePO filePO : filePOS) {
+            obsUtil.downFile(filePO.getParentDir() + filePO.getName(), fileTempDirPath + filePO.getName());
+        }
+        String verifyMessage = verify(fileTempDirPath, sourceFile, sha256File, ascFile);
+        if (StringUtils.isEmpty(verifyMessage)) {
+            sourceFile.setVerifyResult("success");
+            sha256File.setVerifyResult("success");
+            return true;
+        }
+        if (verifyMessage.contains("asc")) {
+            sha256File.setVerifyResult(verifyMessage);
+            sourceFile.setVerifyResult(verifyMessage);
+        }
+        if (verifyMessage.contains("checksum")) {
+            sha256File.setVerifyResult("success");
+            sourceFile.setVerifyResult(verifyMessage);
+        }
+        sourceFile.setPublishResult("fail");
+        sha256File.setPublishResult("fail");
+        ascFile.setPublishResult("fail");
+        return false;
+    }
+
+    /**
      * 判断filePOS是否缺失文件
      *
      * @param filePOS filePOS
@@ -321,46 +355,8 @@ public class PublishVerifyController {
         return true;
     }
 
-    /**
-     * 文件验签
-     *
-     * @param filePOS         源文件、sha256文件、asc文件
-     * @param fileTempDirPath 文件临时下载路径
-     * @return 是否验签成功
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath) throws IOException, InterruptedException {
-        FilePO sourceFile = filePOS.get(0);
-        FilePO sha256File = filePOS.get(1);
-        FilePO ascFile = filePOS.get(2);
-        File fileTempDir = new File(fileTempDirPath);
-        fileTempDir.mkdir();
-        for (FilePO filePO : filePOS) {
-            obsUtil.downFile(filePO.getParentDir() + filePO.getName(), fileTempDirPath + filePO.getName());
-        }
-        String verifyMessage = verify(fileTempDirPath, sourceFile, sha256File, ascFile);
-        if (StringUtils.isEmpty(verifyMessage)) {
-            sourceFile.setVerifyResult("success");
-            sha256File.setVerifyResult("success");
-            return true;
-        }
-        if (verifyMessage.contains("asc")) {
-            sha256File.setVerifyResult(verifyMessage);
-            sourceFile.setVerifyResult(verifyMessage);
-        }
-        if (verifyMessage.contains("checksum")) {
-            sha256File.setVerifyResult("success");
-            sourceFile.setVerifyResult(verifyMessage);
-        }
-        sourceFile.setPublishResult("fail");
-        sha256File.setPublishResult("fail");
-        ascFile.setPublishResult("fail");
-        return false;
-    }
-
     private String verify(String fileTempDirPath, FilePO sourceFile, FilePO sha256File, FilePO ascFile) throws IOException, InterruptedException {
-        if (!verifyService.fileVerify(ascFile.getName(), sha256File.getName())) {
+        if (!verifyService.fileVerify(fileTempDirPath + ascFile.getName())) {
             return sha256File.getName() + " asc signatures not OK.";
         }
         if (StringUtils.isEmpty(sourceFile.getSha256())) {
