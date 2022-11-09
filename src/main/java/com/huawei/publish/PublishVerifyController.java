@@ -99,13 +99,13 @@ public class PublishVerifyController {
                     continue;
                 }
                 // 验签
-                boolean deleteTemp = true;
+                boolean isSuccess = true;
                 if (!"latest/".equals(sourceFile.getParentDir()) && !sourceFile.getParentDir().contains("binarylibs_update/")
                     && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())) {
-                    deleteTemp = verifySignature(filePOS, fileTempDirPath);
+                    isSuccess = verifySignature(filePOS, fileTempDirPath);
                 }
                 // 发布
-                if (deleteTemp) {
+                if (isSuccess) {
                     if ("obs".equals(publishPO.getUploadType())) {
                         for (FilePO filePO : filePOS) {
                             publishFile(filePO, targetPath, exists);
