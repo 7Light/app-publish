@@ -101,7 +101,8 @@ public class PublishVerifyController {
                 // 验签
                 boolean isSuccess = true;
                 if (!"latest/".equals(sourceFile.getParentDir()) && !sourceFile.getParentDir().contains("binarylibs_update/")
-                    && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())) {
+                    && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())
+                    && !sourceFile.getParentDir().contains("latest/docs/")) {
                     isSuccess = verifySignature(filePOS, fileTempDirPath);
                 }
                 // 发布
@@ -219,7 +220,8 @@ public class PublishVerifyController {
             List<FilePO> filePOS = new ArrayList<>();
             filePOS.add(filePO);
             if ("latest/".equals(filePO.getParentDir()) || filePO.getParentDir().contains("binarylibs_update/")
-                || filePO.getParentDir().contains("binarylibs/") || "git_num.txt".equals(filePO.getName())) {
+                || filePO.getParentDir().contains("binarylibs/") || "git_num.txt".equals(filePO.getName())
+                || filePO.getParentDir().contains("latest/docs/")) {
                 list.add(filePOS);
                 continue;
             }
@@ -395,7 +397,6 @@ public class PublishVerifyController {
         if (CollectionUtils.isEmpty(publishPO.getFiles())) {
             return "files cannot be empty.";
         }
-
         for (FilePO file : publishPO.getFiles()) {
             if (StringUtils.isEmpty(file.getTargetPath())) {
                 return "file target path can not be empty.";
