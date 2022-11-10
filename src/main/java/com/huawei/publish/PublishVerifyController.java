@@ -256,9 +256,9 @@ public class PublishVerifyController {
                 }
             }
             list.add(filePOS);
-            missFiles.addAll(sha256Files);
-            missFiles.addAll(ascFiles);
         }
+        missFiles.addAll(sha256Files);
+        missFiles.addAll(ascFiles);
         return list;
     }
 
@@ -407,5 +407,4 @@ public class PublishVerifyController {
         }
         return "";
     }
-
 }
