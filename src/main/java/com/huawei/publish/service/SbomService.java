@@ -25,24 +25,23 @@ public class SbomService {
         paramMap.put("artifactPath", artifactPath);
         String paramJson= JSON.toJSONString(paramMap);
         String responseContent = HttpRequestUtil.doPost(sbomPO.getGenerateSbomUrl(), paramJson);
+        generateResultMap.put("result", "publishing");
         if (StringUtils.isEmpty(responseContent)) {
             // 请求异常返回空值，检查服务是否通
             generateResultMap.put("errorInfo", "请求异常：" + sbomPO.getGenerateSbomUrl());
-            generateResultMap.put("result", "publishing");
             log.error("SBOM生成: " + generateResultMap.get("errorInfo"));
             return generateResultMap;
         }
         JSONObject object = JSONObject.parseObject(responseContent);
         if (object.getObject("success", Boolean.class) == null ) {
             generateResultMap.put("errorInfo", "请求异常：" + sbomPO.getGenerateSbomUrl());
-            generateResultMap.put("result", "publishing");
             log.error("SBOM生成: " + generateResultMap.get("errorInfo"));
             return generateResultMap;
         }
         if (!object.getObject("success", Boolean.class)) {
             generateResultMap.put("errorInfo", "SBOM生成: " + object.getObject("errorInfo", String.class));
-            generateResultMap.put("result", "fail");
-            log.error("SBOM生成: " + object.getObject("errorInfo", String.class));
+            log.error("SBOM生成: errorInfo = " + object.getObject("errorInfo", String.class) + "; artifactPath = "
+                + artifactPath +"; url = " + sbomPO.getGenerateSbomUrl());
             return generateResultMap;
         }
         generateResultMap.put("result", "success");
@@ -65,24 +64,23 @@ public class SbomService {
         String paramJson= JSON.toJSONString(paramMap);
         String responseContent = HttpRequestUtil.doPost(sbomPO.getPublishSbomUrl(), paramJson);
         Map<String, String> publishResultMap = new HashMap<>();
+        publishResultMap.put("result", "publishing");
         if (StringUtils.isEmpty(responseContent)) {
             // 请求异常返回空值，检查服务是否通
             publishResultMap.put("errorInfo", "请求异常：" + sbomPO.getPublishSbomUrl());
-            publishResultMap.put("result", "publishing");
             log.error("SBOM发布: " + publishResultMap.get("errorInfo"));
             return publishResultMap;
         }
         JSONObject object = JSONObject.parseObject(responseContent);
         if (object.getObject("success", Boolean.class) == null ) {
             publishResultMap.put("errorInfo", "请求异常：" + sbomPO.getPublishSbomUrl());
-            publishResultMap.put("result", "publishing");
             log.error("SBOM发布: " + publishResultMap.get("errorInfo"));
             return publishResultMap;
         }
         if (object.getObject("success", Boolean.class) == null || !object.getObject("success", Boolean.class)) {
             publishResultMap.put("errorInfo", "SBOM发布: " + object.getObject("errorInfo", String.class));
-            publishResultMap.put("result", "fail");
-            log.error("SBOM发布: " + object.getObject("errorInfo", String.class));
+            log.error("SBOM发布: errorInfo = " + object.getObject("errorInfo", String.class) + "; url = "
+                + sbomPO.getPublishSbomUrl() + "; sbomContent = " + sbomContent.length() + "; productName = " + productName);
             return publishResultMap;
         }
         publishResultMap.put("taskId", object.getObject("taskId", String.class));
@@ -99,29 +97,27 @@ public class SbomService {
     public Map<String, String> querySbomPublishResult(String querySbomPublishResultUrl) {
         String responseContent = HttpRequestUtil.doGet(querySbomPublishResultUrl);
         Map<String, String> queryResultMap = new HashMap<>();
+        queryResultMap.put("result", "publishing");
         if (StringUtils.isEmpty(responseContent)) {
             // 请求异常返回空值，检查服务是否通
             queryResultMap.put("errorInfo", "请求异常：" + querySbomPublishResultUrl);
-            queryResultMap.put("result", "publishing");
             log.error("SBOM发布结果查询: " + queryResultMap.get("errorInfo"));
             return queryResultMap;
         }
         JSONObject object = JSONObject.parseObject(responseContent);
         if (object.getObject("success", Boolean.class) == null ) {
             queryResultMap.put("errorInfo", "请求异常：" + querySbomPublishResultUrl);
-            queryResultMap.put("result", "publishing");
             log.error("SBOM发布结果查询: " + queryResultMap.get("errorInfo"));
             return queryResultMap;
         }
         if (!object.getObject("success", Boolean.class)) {
-            queryResultMap.put("errorInfo", "SBOM结果: " + object.getObject("errorInfo", String.class));
-            queryResultMap.put("result", "fail");
+            queryResultMap.put("errorInfo", "SBOM结果查询: " + object.getObject("errorInfo", String.class));
             log.error("SBOM发布结果查询: " + object.getObject("errorInfo", String.class));
             return queryResultMap;
         }
         if (!object.getObject("finish", Boolean.class)) {
-            queryResultMap.put("errorInfo", "SBOM发布未完成");
-            queryResultMap.put("result", "publishing");
+            // SBOM发布未完成
+            log.info("SBOM发布未完成！");
             return queryResultMap;
         }
         queryResultMap.put("sbomRef", object.getObject("sbomRef", String.class));
