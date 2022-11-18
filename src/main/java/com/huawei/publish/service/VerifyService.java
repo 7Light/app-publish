@@ -98,7 +98,7 @@ public class VerifyService {
     public boolean fileVerify(String filePath) {
         try {
             if (!execCmd("gpg -k | grep " + fileKey).contains(fileKey)) {
-                execCmd("wget -O RPM-GPG-KEY-openGauss " + gpgKeyUrl);
+                execCmd("wget -O GPG-KEY-openGauss " + gpgKeyUrl);
                 execCmd("gpg --import " + keyFileName);
             }
             return execCmd("gpg --verify " + filePath).contains("Primary key fingerprint");
