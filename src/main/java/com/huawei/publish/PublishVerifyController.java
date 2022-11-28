@@ -394,6 +394,9 @@ public class PublishVerifyController {
     }
 
     private String validate(PublishPO publishPO) {
+        if (StringUtils.isEmpty(publishPO.getGpgKeyUrl())) {
+            return "key url cannot be blank.";
+        }
         if (CollectionUtils.isEmpty(publishPO.getFiles())) {
             return "files cannot be empty.";
         }
