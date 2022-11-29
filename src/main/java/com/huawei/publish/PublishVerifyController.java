@@ -228,14 +228,16 @@ public class PublishVerifyController {
             String sourceName = filePO.getName();
             if (sourceName.endsWith(".tar.bz2")) {
                 for (FilePO sha256File : sha256Files) {
-                    if (sha256File.getName().equals(sourceName.replace(".tar.bz2", ".sha256"))) {
+                    if (sha256File.getName().equals(sourceName.replace(".tar.bz2", ".sha256")) &&
+                        filePO.getParentDir().equals(sha256File.getParentDir())) {
                         filePOS.add(sha256File);
                         sha256Files.remove(sha256File);
                         break;
                     }
                 }
                 for (FilePO ascFile : ascFiles) {
-                    if (ascFile.getName().equals(sourceName.replace(".tar.bz2", ".sha256.asc"))) {
+                    if (ascFile.getName().equals(sourceName.replace(".tar.bz2", ".sha256.asc")) &&
+                        filePO.getParentDir().equals(ascFile.getParentDir())) {
                         filePOS.add(ascFile);
                         ascFiles.remove(ascFile);
                         break;
@@ -243,14 +245,16 @@ public class PublishVerifyController {
                 }
             } else {
                 for (FilePO sha256File : sha256Files) {
-                    if (sha256File.getName().equals(sourceName + ".sha256")) {
+                    if (sha256File.getName().equals(sourceName + ".sha256") &&
+                        filePO.getParentDir().equals(sha256File.getParentDir())) {
                         filePOS.add(sha256File);
                         sha256Files.remove(sha256File);
                         break;
                     }
                 }
                 for (FilePO ascFile : ascFiles) {
-                    if (ascFile.getName().equals(sourceName + ".sha256.asc")) {
+                    if (ascFile.getName().equals(sourceName + ".sha256.asc") &&
+                        filePO.getParentDir().equals(ascFile.getParentDir())) {
                         filePOS.add(ascFile);
                         ascFiles.remove(ascFile);
                         break;
