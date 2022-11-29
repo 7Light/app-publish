@@ -170,14 +170,16 @@ public class PublishVerifyController {
             }
             String sourceName = filePO.getName();
             for (FilePO sha256File : sha256Files) {
-                if (sha256File.getName().equals(sourceName + ".sha256")) {
+                if (sha256File.getName().equals(sourceName + ".sha256") &&
+                    filePO.getParentDir().equals(sha256File.getParentDir())) {
                     filePOS.add(sha256File);
                     sha256Files.remove(sha256File);
                     break;
                 }
             }
             for (FilePO ascFile : ascFiles) {
-                if (ascFile.getName().equals(sourceName + ".sha256.asc")) {
+                if (ascFile.getName().equals(sourceName + ".sha256.asc") &&
+                    filePO.getParentDir().equals(ascFile.getParentDir())) {
                     filePOS.add(ascFile);
                     ascFiles.remove(ascFile);
                     break;
