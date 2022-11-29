@@ -1,4 +1,4 @@
-FROM openeuler/openeuler:22.03-lts
+FROM ${BASE_IMAGE}
 
 # Set env
 USER root
