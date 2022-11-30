@@ -1,4 +1,4 @@
-FROM swr.cn-north-4.myhuaweicloud.com/opensourceway/mindspore/mindspore-repo-post-verify-base:v1.0.20221128192021
+FROM ubuntu:xenial
 
 # Set env
 USER root
