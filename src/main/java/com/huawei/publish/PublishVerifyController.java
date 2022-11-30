@@ -83,7 +83,7 @@ public class PublishVerifyController {
             }
             for (List<FilePO> filePOS : filePOList) {
                 FilePO sourceFile = filePOS.get(0);// 源文件
-                String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
+                String fileTempDirPath = (tempDirPath + "/" + UUID.randomUUID() + "/").replace("//", "/");
                 String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
                 //判断文件是否存在于发布路径
                 boolean exists = true;
