@@ -89,9 +89,9 @@ public class PublishVerifyController {
                 boolean exists = true;
                 if ("obs".equals(publishPO.getUploadType())) {
                     for (FilePO filePO : filePOS) {
-                        exists = exists && !verifyService.execCmdAndContainsMessage("./obsutil stat " +
+                        exists = exists && !verifyService.execCmdAndContainsMessage("./obsutil ls " +
                             publishPO.getObsUrl() + (targetPath + "/" + filePO.getName())
-                            .replace("//", "/"), "Error: Status [404]");
+                            .replace("//", "/"), "is: 0B");
                     }
                 }
                 if ("skip".equals(publishPO.getConflict()) && exists) {
