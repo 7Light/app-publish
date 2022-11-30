@@ -102,8 +102,10 @@ public class PublishVerifyController {
                 }
                 // 验签
                 boolean isVerifySuccess = true;
-                if (!"yaml".equals(sourceFile.getVerifyType())) {
-                    String authorization = publishPO.getAuthorization();
+                String authorization = publishPO.getAuthorization();
+                if ("yaml".equals(sourceFile.getVerifyType())) {
+                    fileDownloadService.downloadHttpUrl(sourceFile.getUrl(), fileTempDirPath, sourceFile.getName(), authorization);
+                } else {
                     isVerifySuccess = verifySignature(filePOS, fileTempDirPath, authorization);
                 }
                 // 发布
