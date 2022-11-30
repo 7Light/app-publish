@@ -89,9 +89,9 @@ public class PublishVerifyController {
                 boolean exists = true;
                 if ("obs".equals(publishPO.getUploadType())) {
                     for (FilePO filePO : filePOS) {
-                        exists = exists && !verifyService.execCmdAndContainsMessage("obsutil ls " +
+                        exists = exists && !verifyService.execCmdAndContainsMessage("./obsutil stat " +
                             publishPO.getObsUrl() + (targetPath + "/" + filePO.getName())
-                            .replace("//", "/"), "is: 0B");
+                            .replace("//", "/"), "Error: Status [404]");
                     }
                 }
                 if ("skip".equals(publishPO.getConflict()) && exists) {
@@ -319,7 +319,7 @@ public class PublishVerifyController {
         if ("obs".equals(publishPO.getUploadType())) {
             for (FilePO filePO : filePOS) {
                 String fileName = filePO.getName();
-                boolean uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
+                boolean uploadSuccess = verifyService.execCmdAndContainsMessage("./obsutil cp " + fileTempDirPath
                     + fileName + " " + publishPO.getObsUrl() + (targetPath + "/" + filePO.getName())
                     .replace("//", "/"), "Upload successfully");
                 if (uploadSuccess) {
