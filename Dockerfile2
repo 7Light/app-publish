@@ -30,7 +30,7 @@ RUN mvn clean install -s settings.xml
 WORKDIR /usr/local
 RUN touch entrypoint.sh
 RUN echo '#!/bin/bash' >> /usr/local/entrypoint.sh
-RUN sed -i "a/usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil config -i=\$ak -k=\$sk -e=\$endpoint" /usr/local/entrypoint.sh
-RUN sed -i "ajava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" /usr/local/entrypoint.sh
+RUN sed -i -e "1a/usr/local/obsutil/obsutil_linux_amd64_5.4.6/obsutil config -i=\$ak -k=\$sk -e=\$endpoint" /usr/local/entrypoint.sh
+RUN sed -i -e "2ajava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" /usr/local/entrypoint.sh
 RUN chmod u+x /usr/local/entrypoint.sh
 ENTRYPOINT ["/usr/local/entrypoint.sh"]
