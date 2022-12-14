@@ -4,13 +4,22 @@ import com.huawei.publish.model.FileFromRepoModel;
 import com.obs.services.ObsClient;
 import com.obs.services.ObsConfiguration;
 import com.obs.services.exception.ObsException;
-import com.obs.services.model.*;
+import com.obs.services.model.DownloadFileRequest;
+import com.obs.services.model.ListObjectsRequest;
+import com.obs.services.model.MonitorableProgressListener;
+import com.obs.services.model.ObjectListing;
+import com.obs.services.model.ObjectMetadata;
+import com.obs.services.model.ObsObject;
+import com.obs.services.model.ProgressStatus;
 import org.apache.log4j.Logger;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -138,10 +147,10 @@ public class ObsUtil {
         }
     }
 
-    public boolean isExist(String objectKey) {
+    public boolean isExist(String objectName) {
         ObsClient obsClient = new ObsClient(ak, sk, config);
         try {
-            boolean exist = obsClient.doesObjectExist(bucketName, objectKey);
+            boolean exist = obsClient.doesObjectExist(bucketName, objectName);
             return exist;
         } catch (ObsException e) {
             log.error(e.getErrorMessage());
@@ -173,5 +182,54 @@ public class ObsUtil {
             result = dividend.divide(new BigDecimal(1073741824), 2, RoundingMode.HALF_UP) + "GB";
         }
         return result;
+    }
+
+    /**
+     * 将obs上的监控数据文件base64 encode为string
+     *
+     * @param objectName 文件路径
+     * @return String
+     */
+    public String getSbomContent(String objectName) {
+        ObsClient obsClient = new ObsClient(ak, sk, config);
+        InputStream is = null;
+        ByteArrayOutputStream bos = null;
+        byte[] bytes = null;
+        try {
+            ObsObject obsObject = obsClient.getObject(bucketName, objectName);
+            is = obsObject.getObjectContent();
+            bos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                bos.write(buffer, 0, len);
+            }
+            bytes = bos.toByteArray();
+        } catch (IOException | ObsException e) {
+            log.error(e.getMessage());
+        } finally {
+            if (bos != null) {
+                try {
+                    bos.close();
+                } catch (IOException e) {
+                    log.error(e.getMessage());
+                }
+            }
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    log.error(e.getMessage());
+                }
+            }
+            if (obsClient != null) {
+                try {
+                    obsClient.close();
+                } catch (IOException e) {
+                    log.error("", e);
+                }
+            }
+        }
+        return new String(Base64.getEncoder().encode(bytes));
     }
 }

@@ -1,10 +1,14 @@
 package com.huawei.publish;
 
+import com.alibaba.fastjson.JSONObject;
 import com.huawei.publish.model.FileFromRepoModel;
 import com.huawei.publish.model.FilePO;
 import com.huawei.publish.model.PublishPO;
 import com.huawei.publish.model.PublishResult;
+import com.huawei.publish.model.SbomPO;
+import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.ObsUtil;
+import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
 import org.apache.log4j.Logger;
 import org.springframework.util.CollectionUtils;
@@ -31,9 +35,12 @@ import java.util.UUID;
 @RestController
 public class PublishVerifyController {
     private static Map<String, PublishResult> publishResult = new HashMap<>();
+    private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
+    private static Map<String, Map<String, String>> sbomTaskIdMap = new HashMap<>();
     private static Logger log = Logger.getLogger(PublishVerifyController.class);
     private VerifyService verifyService;
     private static ObsUtil obsUtil = new ObsUtil();
+    private SbomService sbomService;
 
     /**
      * heartbeat
@@ -144,6 +151,147 @@ public class PublishVerifyController {
     }
 
     /**
+     * 查询sbom发布结果
+     *
+     * @param sbomPO sbomPO
+     * @return SbomResultPO
+     */
+    @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
+    public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
+        SbomResultPO sbomResultPO = new SbomResultPO();
+        String message = validateSbomPO(sbomPO);
+        if (!StringUtils.isEmpty(message)) {
+            sbomResultPO.setMessage(message);
+            sbomResultPO.setResult("failed");
+            return sbomResultPO;
+        }
+        String publishId = sbomPO.getPublishId();
+        if (sbomResultMap.containsKey(publishId)) {
+            // 有sbom发布结果
+            sbomResultPO = sbomResultMap.get(publishId);
+            Map<String, String> taskId = sbomTaskIdMap.get(publishId);
+            String result = sbomResultPO.getResult();
+            if ("publishing".equals(result) || "success".equals(result)) {
+                return sbomResultPO;
+            }
+            // sbom发布失败的包再次尝试发布
+            if (CollectionUtils.isEmpty(taskId) || !StringUtils.isEmpty(sbomResultPO.getMessage())) {
+                sbomResultPO.setMessage("");
+                PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+                sbomResultAsync(sbomPO, publishResult.getFiles());
+            }
+            // sbom发布成功的包查询sbom归档链接
+            String resultUrl = sbomPO.getQuerySbomPublishResultUrl();
+            for (FilePO file : sbomResultPO.getFiles()) {
+                if ("success".equals(file.getSbomResult())) {
+                    continue;
+                }
+                String key = file.getParentDir() + file.getName();
+                if (!taskId.containsKey(key)) {
+                    continue;
+                }
+                String url = resultUrl + "/" + taskId.get(key);
+                Map<String, String> querySbomMap = sbomService.querySbomPublishResult(url.replace("//", "/"));
+                if (!"success".equals(querySbomMap.get("result"))) {
+                    file.setSbomResult("query fail");
+                    file.setSbomRef(querySbomMap.get("errorInfo"));
+                    continue;
+                }
+                file.setSbomRef(querySbomMap.get("sbomRef"));
+                file.setSbomResult("success");
+            }
+            sbomResultMap.put(publishId, sbomResultPO);
+        } else {
+            // 无sbom发布结果
+            sbomResultPO = new SbomResultPO();
+            sbomResultPO.setResult("publishing");
+            sbomResultMap.put(publishId, sbomResultPO);
+            // 初始化taskId
+            Map<String, String> taskId = new HashMap<>();
+            sbomTaskIdMap.put(publishId, taskId);
+            // 异步发布
+            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+            sbomResultAsync(sbomPO, publishResult.getFiles());
+        }
+        return sbomResultMap.get(publishId);
+    }
+
+    private String validateSbomPO(SbomPO sbomPO) {
+        if (!StringUtils.isEmpty(sbomPO.getPublishSbomUrl())) {
+            return "publishSbomUrl connot be blank";
+        }
+        if (!StringUtils.isEmpty(sbomPO.getQuerySbomPublishResultUrl())) {
+            return "querySbomPublishResultUrl connot be blank";
+        }
+        if (!StringUtils.isEmpty(sbomPO.getPublishId())) {
+            return "publishId connot be blank";
+        }
+        if (!StringUtils.isEmpty(sbomPO.getPublishResultDetail())) {
+            return "publishResultDetail connot be blank";
+        }
+        return "";
+    }
+
+    /**
+     * 发布sbom
+     *
+     * @param sbomPO sbomPO
+     * @param files  发布的files
+     */
+    public void sbomResultAsync(SbomPO sbomPO, List<FilePO> files) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                SbomResultPO sbomResult = new SbomResultPO();
+                Map<String, String> taskId = sbomTaskIdMap.get(sbomPO.getPublishId());
+                boolean flag = false;
+                for (FilePO file : files) {
+                    // 不做sbom发布的文件
+                    if (file.getName().endsWith(".sha256") || file.getName().endsWith(".asc")
+                        || file.getParentDir().contains("latest/docs/") || "git_num.txt".equals(file.getName())
+                        || "fail".equals(file.getPublishResult())) {
+                        continue;
+                    }
+                    // sbom发布成功的文件
+                    if (!"publish fail".equals(file.getSbomResult())) {
+                        continue;
+                    }
+                    // sbom待发布的文件
+                    String sbomParentDir = file.getParentDir().replace("latest/", "latest/sbom_tracer/");
+                    String sbomFileName = file.getName() + "_tracer_result_tar.gz";
+                    boolean exist = obsUtil.isExist(sbomParentDir + sbomFileName);
+                    if (!exist) {
+                        flag = true;
+                        file.setSbomResult("publish fail");
+                        file.setSbomRef("no " + sbomFileName);
+                        log.info("no " + sbomFileName);
+                        continue;
+                    }
+                    String sbomContent = obsUtil.getSbomContent(sbomParentDir + sbomFileName);
+                    Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomPO, sbomContent, file.getName());
+                    if (!"success".equals(publishSbomMap.get("result"))) {
+                        flag = true;
+                        file.setSbomResult("publish fail");
+                        file.setSbomRef(publishSbomMap.get("errorInfo"));
+                        continue;
+                    }
+                    file.setSbomResult("publish success");
+                    taskId.put(file.getParentDir() + file.getName(), publishSbomMap.get("taskId"));
+                }
+                if (flag) {
+                    sbomResult.setMessage("contains sbom publish failed package");
+                    sbomResult.setResult("partial success");
+                } else {
+                    sbomResult.setResult("success");
+                }
+                sbomResult.setFiles(files);
+                sbomResult.setSbomPO(sbomPO);
+                sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
+            }
+        }).start();
+    }
+
+    /**
      * 提供需要发布的一层文件列表,由majun FileFromRepoUtil类中的getFiles（）方法请求调用
      *
      * @param path 路径前缀
@@ -188,7 +336,8 @@ public class PublishVerifyController {
             return Collections.emptyList();
         }
         for (FileFromRepoModel file : files) {
-            if (!file.isDir()) {
+            // 排除目录，排除sbom_tracer下所有文件
+            if (!file.isDir() && !file.getParentDir().contains("sbom_tracer")) {
                 result.add(file);
             }
         }
@@ -199,7 +348,7 @@ public class PublishVerifyController {
      * 封装FilePO, 源文件、对应的sha256、对应的asc存入list集合,对应索引0,1,2
      *
      * @param files     要发布的文件
-     * @param missFiles
+     * @param missFiles 存储缺失源文件的sha256和asc文件
      * @return List<List < FilePO>>
      */
     private List<List<FilePO>> getFilePOList(List<FilePO> files, List<FilePO> missFiles) {
