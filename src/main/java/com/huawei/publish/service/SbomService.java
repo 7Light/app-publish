@@ -31,6 +31,7 @@ public class SbomService {
         Map<String, String> paramMap = new HashMap<>();
         paramMap.put("productName", productName);
         paramMap.put("sbomContent", sbomContent);
+        paramMap.put("sbomContentType", "sbom_tracer_data");
         //定义发送数据
         String paramJson = JSON.toJSONString(paramMap);
         String responseContent = HttpRequestUtil.doPost(sbomPO.getPublishSbomUrl(), paramJson);
