@@ -12,6 +12,24 @@ public class FilePO {
     private String sha256;
     private String publishResult;
     private String verifyResult;
+    private String sbomRef;
+    private String sbomResult;
+
+    public String getSbomResult() {
+        return sbomResult;
+    }
+
+    public void setSbomResult(String sbomResult) {
+        this.sbomResult = sbomResult;
+    }
+
+    public String getSbomRef() {
+        return sbomRef;
+    }
+
+    public void setSbomRef(String sbomRef) {
+        this.sbomRef = sbomRef;
+    }
 
     public String getPublishResult() {
         return publishResult;
