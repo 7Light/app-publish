@@ -217,16 +217,16 @@ public class PublishVerifyController {
     }
 
     private String validateSbomPO(SbomPO sbomPO) {
-        if (!StringUtils.isEmpty(sbomPO.getPublishSbomUrl())) {
+        if (StringUtils.isEmpty(sbomPO.getPublishSbomUrl())) {
             return "publishSbomUrl connot be blank";
         }
-        if (!StringUtils.isEmpty(sbomPO.getQuerySbomPublishResultUrl())) {
+        if (StringUtils.isEmpty(sbomPO.getQuerySbomPublishResultUrl())) {
             return "querySbomPublishResultUrl connot be blank";
         }
-        if (!StringUtils.isEmpty(sbomPO.getPublishId())) {
+        if (StringUtils.isEmpty(sbomPO.getPublishId())) {
             return "publishId connot be blank";
         }
-        if (!StringUtils.isEmpty(sbomPO.getPublishResultDetail())) {
+        if (StringUtils.isEmpty(sbomPO.getPublishResultDetail())) {
             return "publishResultDetail connot be blank";
         }
         return "";
