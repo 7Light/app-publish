@@ -259,18 +259,21 @@ public class PublishVerifyController {
                         continue;
                     }
                     // sbom待发布的文件
-                    String sbomParentDir = file.getParentDir().replace("latest/", "latest/sbom_tracer/");
-                    String sbomFileName = file.getName() + "_tracer_result.tar.gz";
+                    String parentDir = file.getParentDir();
+                    String fileName = file.getName();
+                    String sbomParentDir = parentDir.replace("latest/", "latest/sbom_tracer/");
+                    String sbomFileName = fileName + "_tracer_result.tar.gz";
                     boolean exist = obsUtil.isExist(sbomParentDir + sbomFileName);
                     if (!exist) {
                         flag = true;
                         file.setSbomResult("publish fail");
-                        file.setSbomRef("no " + sbomFileName);
+                        file.setSbomRef("SBOM发布: no " + sbomFileName);
                         log.info("no " + sbomFileName);
                         continue;
                     }
                     String sbomContent = obsUtil.getSbomContent(sbomParentDir + sbomFileName);
-                    Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomPO, sbomContent, file.getName());
+                    String productName = parentDir.substring(parentDir.lastIndexOf("/") + 1) + fileName;
+                    Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomPO, sbomContent, productName);
                     if (!"success".equals(publishSbomMap.get("result"))) {
                         flag = true;
                         file.setSbomResult("publish fail");
@@ -278,7 +281,7 @@ public class PublishVerifyController {
                         continue;
                     }
                     file.setSbomResult("publish success");
-                    taskId.put(file.getParentDir() + file.getName(), publishSbomMap.get("taskId"));
+                    taskId.put(parentDir + fileName, publishSbomMap.get("taskId"));
                 }
                 if (flag) {
                     sbomResult.setMessage("contains sbom publish failed package");
