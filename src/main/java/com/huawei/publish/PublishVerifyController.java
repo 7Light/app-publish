@@ -207,10 +207,11 @@ public class PublishVerifyController {
             // 无sbom发布结果
             sbomResultPO = new SbomResultPO();
             sbomResultPO.setResult("publishing");
-            sbomResultMap.put(publishId, sbomResultPO);
             // 初始化taskId
             Map<String, String> taskId = new HashMap<>();
             sbomTaskIdMap.put(publishId, taskId);
+            sbomResultPO.setTaskId(taskId);
+            sbomResultMap.put(publishId, sbomResultPO);
             // 异步发布
             PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
             sbomResultAsync(sbomPO, publishResult.getFiles());
@@ -272,7 +273,7 @@ public class PublishVerifyController {
                         continue;
                     }
                     String sbomContent = obsUtil.getSbomContent(sbomParentDir + sbomFileName);
-                    String productName = parentDir.substring(parentDir.lastIndexOf("/") + 1) + fileName;
+                    String productName = parentDir.substring(parentDir.substring(0, parentDir.length() - 1).lastIndexOf("/") + 1) + fileName;
                     Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomPO, sbomContent, productName);
                     if (!"success".equals(publishSbomMap.get("result"))) {
                         flag = true;
