@@ -11,6 +11,7 @@ import com.huawei.publish.service.ObsUtil;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,6 +41,7 @@ public class PublishVerifyController {
     private static Logger log = Logger.getLogger(PublishVerifyController.class);
     private VerifyService verifyService;
     private static ObsUtil obsUtil = new ObsUtil();
+    @Autowired
     private SbomService sbomService;
 
     /**
@@ -253,12 +255,12 @@ public class PublishVerifyController {
                         continue;
                     }
                     // sbom发布成功的文件
-                    if (!"publish fail".equals(file.getSbomResult())) {
+                    if ("publish success".equals(file.getSbomResult()) || "success".equals(file.getSbomResult())) {
                         continue;
                     }
                     // sbom待发布的文件
                     String sbomParentDir = file.getParentDir().replace("latest/", "latest/sbom_tracer/");
-                    String sbomFileName = file.getName() + "_tracer_result_tar.gz";
+                    String sbomFileName = file.getName() + "_tracer_result.tar.gz";
                     boolean exist = obsUtil.isExist(sbomParentDir + sbomFileName);
                     if (!exist) {
                         flag = true;

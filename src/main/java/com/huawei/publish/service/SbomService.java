@@ -6,6 +6,7 @@ import com.huawei.publish.model.SbomPO;
 import com.huawei.publish.utils.HttpRequestUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import java.util.Map;
  * @author jrsgxtc
  * @since 2022/12/6
  */
+@Component
 public class SbomService {
     private static Logger log = LoggerFactory.getLogger(SbomService.class);
 
