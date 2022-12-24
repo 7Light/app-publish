@@ -172,6 +172,7 @@ public class PublishVerifyController {
             // 有sbom发布结果
             sbomResultPO = sbomResultMap.get(publishId);
             Map<String, String> taskId = sbomTaskIdMap.get(publishId);
+            sbomResultPO.setTaskId(taskId);
             String result = sbomResultPO.getResult();
             if ("publishing".equals(result) || "success".equals(result)) {
                 return sbomResultPO;
@@ -192,8 +193,8 @@ public class PublishVerifyController {
                 if (!taskId.containsKey(key)) {
                     continue;
                 }
-                String url = resultUrl + "/" + taskId.get(key);
-                Map<String, String> querySbomMap = sbomService.querySbomPublishResult(url.replace("//", "/"));
+                String url = resultUrl.endsWith("/") ? resultUrl + taskId.get(key) : resultUrl + "/" + taskId.get(key);
+                Map<String, String> querySbomMap = sbomService.querySbomPublishResult(url);
                 if (!"success".equals(querySbomMap.get("result"))) {
                     file.setSbomResult("query fail");
                     file.setSbomRef(querySbomMap.get("errorInfo"));
@@ -276,6 +277,11 @@ public class PublishVerifyController {
                     String productName = parentDir.substring(parentDir.substring(0, parentDir.length() - 1).lastIndexOf("/") + 1) + fileName;
                     Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomPO, sbomContent, productName);
                     if (!"success".equals(publishSbomMap.get("result"))) {
+                        if (publishSbomMap.get("errorInfo").contains("has sbom import job in running")) {
+                            // 发布任务正在进行中
+                            log.info("sbom import job in running！");
+                            continue;
+                        }
                         flag = true;
                         file.setSbomResult("publish fail");
                         file.setSbomRef(publishSbomMap.get("errorInfo"));
