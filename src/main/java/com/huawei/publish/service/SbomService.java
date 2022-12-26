@@ -91,6 +91,7 @@ public class SbomService {
         }
         if (!object.getObject("finish", Boolean.class)) {
             // SBOM发布进行中
+            queryResultMap.put("errorInfo", "SBOM发布进行中！");
             log.info("SBOM发布进行中！");
             return queryResultMap;
         }

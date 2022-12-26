@@ -74,7 +74,7 @@ public class HttpRequestUtil {
             //确保流关闭
             EntityUtils.consume(entity);
         }catch (Exception e){
-            log.error("post请求提交失败,异常信息:{}", e.getMessage());
+            log.error("get请求提交失败,异常信息:{}", e.getMessage());
         }finally {
             httpGet.releaseConnection();
         }

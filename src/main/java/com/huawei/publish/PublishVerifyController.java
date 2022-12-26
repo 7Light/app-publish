@@ -196,7 +196,6 @@ public class PublishVerifyController {
                 String url = resultUrl.endsWith("/") ? resultUrl + taskId.get(key) : resultUrl + "/" + taskId.get(key);
                 Map<String, String> querySbomMap = sbomService.querySbomPublishResult(url);
                 if (!"success".equals(querySbomMap.get("result"))) {
-                    file.setSbomResult("query fail");
                     file.setSbomRef(querySbomMap.get("errorInfo"));
                     continue;
                 }
