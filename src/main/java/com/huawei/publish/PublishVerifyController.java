@@ -266,10 +266,8 @@ public class PublishVerifyController {
                     String sbomFileName = fileName + "_tracer_result.tar.gz";
                     boolean exist = obsUtil.isExist(sbomParentDir + sbomFileName);
                     if (!exist) {
-                        flag = true;
-                        file.setSbomResult("publish fail");
-                        file.setSbomRef("SBOM发布: no " + sbomFileName);
-                        log.info("no " + sbomFileName);
+                        file.setSbomResult(fileName + "不需要做sbom发布");
+                        log.info(fileName + "不需要做sbom发布");
                         continue;
                     }
                     String sbomContent = obsUtil.getSbomContent(sbomParentDir + sbomFileName);
