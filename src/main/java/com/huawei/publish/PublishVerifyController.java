@@ -174,7 +174,7 @@ public class PublishVerifyController {
             Map<String, String> taskId = sbomTaskIdMap.get(publishId);
             sbomResultPO.setTaskId(taskId);
             String result = sbomResultPO.getResult();
-            if ("publishing".equals(result) || "success".equals(result)) {
+            if ("publishing".equals(result)) {
                 return sbomResultPO;
             }
             // sbom发布失败的包再次尝试发布
@@ -185,6 +185,7 @@ public class PublishVerifyController {
             }
             // sbom发布成功的包查询sbom归档链接
             String resultUrl = sbomPO.getQuerySbomPublishResultUrl();
+            boolean flag = true;
             for (FilePO file : sbomResultPO.getFiles()) {
                 if ("success".equals(file.getSbomResult())) {
                     continue;
@@ -196,11 +197,15 @@ public class PublishVerifyController {
                 String url = resultUrl.endsWith("/") ? resultUrl + taskId.get(key) : resultUrl + "/" + taskId.get(key);
                 Map<String, String> querySbomMap = sbomService.querySbomPublishResult(url);
                 if (!"success".equals(querySbomMap.get("result"))) {
+                    flag = false;
                     file.setSbomRef(querySbomMap.get("errorInfo"));
                     continue;
                 }
                 file.setSbomRef(querySbomMap.get("sbomRef"));
                 file.setSbomResult("success");
+            }
+            if (!flag) {
+                sbomResultPO.setResult("partial success");
             }
             sbomResultMap.put(publishId, sbomResultPO);
         } else {
