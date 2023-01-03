@@ -177,21 +177,17 @@ public class PublishVerifyController {
             if ("publishing".equals(result)) {
                 return sbomResultPO;
             }
-            // sbom发布失败的包再次尝试发布
-            if (CollectionUtils.isEmpty(taskId) || !StringUtils.isEmpty(sbomResultPO.getMessage())) {
-                sbomResultPO.setMessage("");
-                PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-                sbomResultAsync(sbomPO, publishResult.getFiles());
-            }
             // sbom发布成功的包查询sbom归档链接
             String resultUrl = sbomPO.getQuerySbomPublishResultUrl();
             boolean flag = true;
             for (FilePO file : sbomResultPO.getFiles()) {
-                if ("success".equals(file.getSbomResult())) {
+                if (!"publish success".equals(file.getSbomResult())) {
                     continue;
                 }
                 String key = file.getParentDir() + file.getName();
                 if (!taskId.containsKey(key)) {
+                    file.setSbomResult("publish fail");
+                    sbomResultPO.setPublishSuccess(false);
                     continue;
                 }
                 String url = resultUrl.endsWith("/") ? resultUrl + taskId.get(key) : resultUrl + "/" + taskId.get(key);
@@ -204,10 +200,17 @@ public class PublishVerifyController {
                 file.setSbomRef(querySbomMap.get("sbomRef"));
                 file.setSbomResult("success");
             }
-            if (!flag) {
+            if (flag && sbomResultPO.isPublishSuccess()) {
+                sbomResultPO.setResult("success");
+            } else {
                 sbomResultPO.setResult("partial success");
             }
             sbomResultMap.put(publishId, sbomResultPO);
+            // sbom发布失败的包再次尝试发布
+            if (CollectionUtils.isEmpty(taskId) || !sbomResultPO.isPublishSuccess()) {
+                PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+                sbomResultAsync(sbomPO, publishResult.getFiles());
+            }
         } else {
             // 无sbom发布结果
             sbomResultPO = new SbomResultPO();
@@ -292,12 +295,7 @@ public class PublishVerifyController {
                     file.setSbomResult("publish success");
                     taskId.put(parentDir + fileName, publishSbomMap.get("taskId"));
                 }
-                if (flag) {
-                    sbomResult.setMessage("contains sbom publish failed package");
-                    sbomResult.setResult("partial success");
-                } else {
-                    sbomResult.setResult("success");
-                }
+                sbomResult.setPublishSuccess(!flag);
                 sbomResult.setFiles(files);
                 sbomResult.setSbomPO(sbomPO);
                 sbomResultMap.put(sbomPO.getPublishId(), sbomResult);

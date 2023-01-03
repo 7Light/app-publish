@@ -14,11 +14,21 @@ public class SbomResultPO {
 
     private String result;
 
-    private Map<String, String> taskId ;
+    private Map<String, String> taskId;
 
     private List<FilePO> files;
 
     private SbomPO sbomPO;
+
+    private boolean isPublishSuccess;
+
+    public boolean isPublishSuccess() {
+        return isPublishSuccess;
+    }
+
+    public void setPublishSuccess(boolean publishSuccess) {
+        isPublishSuccess = publishSuccess;
+    }
 
     public String getMessage() {
         return message;
