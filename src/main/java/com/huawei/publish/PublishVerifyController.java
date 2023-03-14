@@ -158,48 +158,47 @@ public class PublishVerifyController {
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
     public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
         String publishId = sbomPO.getPublishId();
+        SbomResultPO sbomResult = sbomResultMap.get(publishId);
+        if (sbomResult != null) {
+            if (sbomResult.getTaskId() == null) {
+                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())){
+                    sbomResult.setMessage("");
+                    // 请求失败，再次发起
+                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+                    sbomResultAsync(sbomPO, publishResult.getFiles());
+                }
+                return sbomResult;
+            }
+            Map<String, String> taskIdMap = sbomResult.getTaskId();
+            Map<String, String> sbomRefMap = new HashMap<>();
+            for (String key : taskIdMap.keySet()) {
+                String taskId = taskIdMap.get(key);
+                Map<String, String> queryResult = sbomService.querySbomPublishResult(
+                    sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
+                sbomResult.setResult(queryResult.get("result"));
+                if(!"success".equals(queryResult.get("result"))){
+                    sbomResult.setMessage(queryResult.get("errorInfo"));
+                    sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
+                    return sbomResult;
+                }
+                sbomResult.setMessage("");
+                sbomRefMap.put(key, queryResult.get("sbomRef"));
+            }
+            for (FilePO file : sbomResult.getFiles()) {
+                if (file.getTargetPath().contains("/source/")) {
+                    continue;
+                }
+                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
+            }
+            sbomResultMap.put(publishId, sbomResult);
+        } else {
+            sbomResult = new SbomResultPO();
+            sbomResult.setResult("publishing");
+            sbomResultMap.put(publishId, sbomResult);
+            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
+            sbomResultAsync(sbomPO, publishResult.getFiles());
+        }
         return sbomResultMap.get(publishId);
-//        SbomResultPO sbomResult = sbomResultMap.get(publishId);
-//        if (sbomResult != null) {
-//            if (sbomResult.getTaskId() == null) {
-//                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())){
-//                    sbomResult.setMessage("");
-//                    // 请求失败，再次发起
-//                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-//                    sbomResultAsync(sbomPO, publishResult.getFiles());
-//                }
-//                return sbomResult;
-//            }
-//            Map<String, String> taskIdMap = sbomResult.getTaskId();
-//            Map<String, String> sbomRefMap = new HashMap<>();
-//            for (String key : taskIdMap.keySet()) {
-//                String taskId = taskIdMap.get(key);
-//                Map<String, String> queryResult = sbomService.querySbomPublishResult(
-//                    sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
-//                sbomResult.setResult(queryResult.get("result"));
-//                if(!"success".equals(queryResult.get("result"))){
-//                    sbomResult.setMessage(queryResult.get("errorInfo"));
-//                    sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
-//                    return sbomResult;
-//                }
-//                sbomResult.setMessage("");
-//                sbomRefMap.put(key, queryResult.get("sbomRef"));
-//            }
-//            for (FilePO file : sbomResult.getFiles()) {
-//                if (file.getTargetPath().contains("/source/")) {
-//                    continue;
-//                }
-//                file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
-//            }
-//            sbomResultMap.put(publishId, sbomResult);
-//        } else {
-//            sbomResult = new SbomResultPO();
-//            sbomResult.setResult("publishing");
-//            sbomResultMap.put(publishId, sbomResult);
-//            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-//            sbomResultAsync(sbomPO, publishResult.getFiles());
-//        }
-//        return sbomResultMap.get(publishId);
     }
 
     public void sbomResultAsync(SbomPO sbomPO, List<FilePO> files) {
