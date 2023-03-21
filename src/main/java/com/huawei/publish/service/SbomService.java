@@ -4,15 +4,20 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.huawei.publish.model.SbomPO;
 import com.huawei.publish.utils.HttpRequestUtil;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+/**
+ * @author chentao
+ */
 @Component
 public class SbomService {
-    private static Logger log = Logger.getLogger(SbomService.class);
+    private static final Logger log = LoggerFactory.getLogger(SbomService.class);
+
     /**
      * SBOM生成
      *

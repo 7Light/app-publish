@@ -1,7 +1,8 @@
 package com.huawei.publish.service;
 
 import com.huawei.publish.model.PublishPO;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,7 +12,7 @@ import java.io.InputStreamReader;
  * verify service
  */
 public class VerifyService {
-    private static Logger log = Logger.getLogger(VerifyService.class);
+    private static final Logger log = LoggerFactory.getLogger(VerifyService.class);
     private String gpgKeyUrl;
     private String keyFileName;
     private String rpmKey;
