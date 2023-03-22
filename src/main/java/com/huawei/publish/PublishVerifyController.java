@@ -287,7 +287,7 @@ public class PublishVerifyController {
         try {
             verifyService = new VerifyService();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT);
-            String tempDirPath = "var/log/app-publish/file/temp/" + dateFormat.format(new Date()) + "/";
+            String tempDirPath = "/var/log/app-publish/file/temp/" + dateFormat.format(new Date()) + "/";
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
                 verifyService.execCmd("mkdir -p " + tempDirPath);
