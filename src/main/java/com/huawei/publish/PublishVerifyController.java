@@ -285,21 +285,22 @@ public class PublishVerifyController {
     private boolean archiveFile(String remoteRepoIp, byte[] bytes, String fileName, String archivePath) {
         FileOutputStream fos = null;
         try {
+            verifyService = new VerifyService();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT);
-            String tempDirPath = "/app-publish/repo/temp/" + dateFormat.format(new Date()) + "/";
+            String tempDirPath = "var/log/app-publish/file/temp/" + dateFormat.format(new Date()) + "/";
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
                 verifyService.execCmd("mkdir -p " + tempDirPath);
             }
             File bulletinFile = new File(tempDirPath + fileName);
             fos = new FileOutputStream(bulletinFile);
+            fos.write(bytes);
             String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                 + remoteRepoIp + " \"[ -d " + archivePath + " ]  &&  echo exists || echo does not exist\"");
             if (!"exists".equals(folderExistsFlag)) {
                 verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                     + remoteRepoIp + " \"mkdir -p " + archivePath + "\"");
             }
-            fos.write(bytes);
             String bulletinOutPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no "
                 + fileName + " root@" + remoteRepoIp + ":" + archivePath + fileName);
             if (!StringUtils.isEmpty(bulletinOutPut)) {
