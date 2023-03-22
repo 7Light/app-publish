@@ -32,6 +32,9 @@ public class VerifyService {
         this.fileKey = publishPO.getFileKey();
     }
 
+    public VerifyService() {
+    }
+
     /**
      * @param cmd cmd
      * @return output
