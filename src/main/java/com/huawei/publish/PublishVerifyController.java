@@ -1,6 +1,7 @@
 package com.huawei.publish;
 
 import com.alibaba.fastjson.JSONObject;
+import com.huawei.publish.model.ArchiveInfoPO;
 import com.huawei.publish.model.FilePO;
 import com.huawei.publish.model.PublishPO;
 import com.huawei.publish.model.PublishResult;
@@ -10,9 +11,11 @@ import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.FileDownloadService;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -20,10 +23,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,6 +40,7 @@ import java.util.Set;
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
+    private static final Logger log = LoggerFactory.getLogger(PublishVerifyController.class);
     private static Map<String, PublishResult> publishResult = new HashMap<>();
     private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
 
@@ -102,14 +110,15 @@ public class PublishVerifyController {
                 }
                 String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                     + publishPO.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
-                if(!"exists".equals(folderExistsFlag)){
+                if (!"exists".equals(folderExistsFlag)) {
                     verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                        + publishPO.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() +"\"");
+                        + publishPO.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
                 }
                 String outPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
                     + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/" + fileName);
                 if (!StringUtils.isEmpty(outPut)) {
-                    file.setVerifyResult("failed");
+                    file.setPublishResult("failed");
+                    continue;
                 }
                 if ("exists".equals(fileExistsFlag)) {
                     file.setPublishResult("cover");
@@ -123,7 +132,7 @@ public class PublishVerifyController {
                     if (repoIndex != null) {
                         if ("createrepo".equals(repoIndex.getIndexType())) {
                             verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                                + publishPO.getRemoteRepoIp() + " \"createrepo -d " + repoIndex.getRepoPath()+ "\"");
+                                + publishPO.getRemoteRepoIp() + " \"createrepo -d " + repoIndex.getRepoPath() + "\"");
                         }
                     }
                 }
@@ -161,7 +170,7 @@ public class PublishVerifyController {
         SbomResultPO sbomResult = sbomResultMap.get(publishId);
         if (sbomResult != null) {
             if (sbomResult.getTaskId() == null) {
-                if("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())){
+                if ("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())) {
                     sbomResult.setMessage("");
                     // 请求失败，再次发起
                     PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
@@ -176,7 +185,7 @@ public class PublishVerifyController {
                 Map<String, String> queryResult = sbomService.querySbomPublishResult(
                     sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
                 sbomResult.setResult(queryResult.get("result"));
-                if(!"success".equals(queryResult.get("result"))){
+                if (!"success".equals(queryResult.get("result"))) {
                     sbomResult.setMessage(queryResult.get("errorInfo"));
                     sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
                     return sbomResult;
@@ -252,6 +261,67 @@ public class PublishVerifyController {
         }).start();
     }
 
+    /**
+     * 发布公告和评审详情归档
+     *
+     * @param archiveInfo 归档信息
+     * @return String
+     */
+    @RequestMapping(value = "/archiveBulletinAndReview", method = RequestMethod.POST)
+    public String archiveBulletinAndReview(@RequestBody ArchiveInfoPO archiveInfo) {
+        // 写出发布公告
+        String remoteRepoIp = archiveInfo.getRemoteRepoIp();
+        String bulletinName = archiveInfo.getVersionNum() + "版本发布公告.html";
+        boolean bulletinResult = archiveFile(remoteRepoIp, archiveInfo.getBulletin(), bulletinName, archiveInfo.getBulletinArchivePath());
+        // 写出发布详情
+        String reviewName = archiveInfo.getVersionNum() + "发布评审详情.html";
+        boolean reviewResult = archiveFile(remoteRepoIp, archiveInfo.getReviewDetail(), reviewName, archiveInfo.getReviewArchivePath());
+        if (bulletinResult && reviewResult) {
+            return "success";
+        }
+        return "fail";
+    }
+
+    private boolean archiveFile(String remoteRepoIp, byte[] bytes, String fileName, String archivePath) {
+        FileOutputStream fos = null;
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT);
+            String tempDirPath = "/app-publish/repo/temp/" + dateFormat.format(new Date()) + "/";
+            File tempDir = new File(tempDirPath);
+            if (!tempDir.exists()) {
+                verifyService.execCmd("mkdir -p " + tempDirPath);
+            }
+            File bulletinFile = new File(tempDirPath + fileName);
+            fos = new FileOutputStream(bulletinFile);
+            String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                + remoteRepoIp + " \"[ -d " + archivePath + " ]  &&  echo exists || echo does not exist\"");
+            if (!"exists".equals(folderExistsFlag)) {
+                verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                    + remoteRepoIp + " \"mkdir -p " + archivePath + "\"");
+            }
+            fos.write(bytes);
+            String bulletinOutPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no "
+                + fileName + " root@" + remoteRepoIp + ":" + archivePath + fileName);
+            if (!StringUtils.isEmpty(bulletinOutPut)) {
+                log.error(bulletinOutPut);
+                return false;
+            }
+            verifyService.execCmd("rm -rf " + tempDirPath);
+            return true;
+        } catch (IOException | InterruptedException e) {
+            log.error(e.getMessage());
+            return false;
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    log.error(e.getMessage());
+                }
+            }
+        }
+    }
+
     private Set<String> getArtifactPaths(List<FilePO> files) {
         Set<String> set = new HashSet<>();
         for (FilePO file : files) {
@@ -306,7 +376,7 @@ public class PublishVerifyController {
 
     private String getTempDirPath(String tempDir) {
         if (tempDir.startsWith("/")) {
-            return  "/var/log" + tempDir;
+            return "/var/log" + tempDir;
         } else {
             return "/var/log/" + tempDir;
         }
