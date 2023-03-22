@@ -271,10 +271,10 @@ public class PublishVerifyController {
     public String archiveBulletinAndReview(@RequestBody ArchiveInfoPO archiveInfo) {
         // 写出发布公告
         String remoteRepoIp = archiveInfo.getRemoteRepoIp();
-        String bulletinName = archiveInfo.getVersionNum() + "版本发布公告.html";
+        String bulletinName = archiveInfo.getVersionNum() + "_publishBulletin.html";
         boolean bulletinResult = archiveFile(remoteRepoIp, archiveInfo.getBulletin(), bulletinName, archiveInfo.getBulletinArchivePath());
         // 写出发布详情
-        String reviewName = archiveInfo.getVersionNum() + "发布评审详情.html";
+        String reviewName = archiveInfo.getVersionNum() + "_reviewDetails.md";
         boolean reviewResult = archiveFile(remoteRepoIp, archiveInfo.getReviewDetail(), reviewName, archiveInfo.getReviewArchivePath());
         if (bulletinResult && reviewResult) {
             return "success";
