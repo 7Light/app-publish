@@ -23,9 +23,9 @@ public class SignInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         boolean handleResult = false;
         String accessToken =request.getHeader(AppConst.ACCESS_TOKEN);
-        if (StringUtils.isNotBlank(accessToken)) {
-           handleResult = SecurityUtil.decrypt(System.getenv(AppConst.ACCESS_TOKEN))
-                .equals(SecurityUtil.decrypt(accessToken));
+        String environmentVariable = System.getenv(AppConst.ACCESS_TOKEN);
+        if (StringUtils.isNotBlank(accessToken) && StringUtils.isNotBlank(environmentVariable)) {
+           handleResult = SecurityUtil.decrypt(environmentVariable).equals(SecurityUtil.decrypt(accessToken));
         }
         if (!handleResult) {
             log.error("Signature authentication failed");
