@@ -17,7 +17,7 @@ ENV PATH ${JAVA_HOME}/bin:$PATH
 
 # install obsutil
 RUN wget https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_amd64.tar.gz
-RUN mkdir /usr/local/obsutil/obsutil_linux_amd64
+RUN mkdir -p /usr/local/obsutil/obsutil_linux_amd64
 RUN tar -xzvf obsutil_linux_amd64.tar.gz -C /usr/local/obsutil/obsutil_linux_amd64 --strip-components 1
 RUN ln -s /usr/local/obsutil/obsutil_linux_amd64/obsutil /usr/bin/obsutil
 RUN chmod 755 /usr/local/obsutil/obsutil_linux_amd64/obsutil
