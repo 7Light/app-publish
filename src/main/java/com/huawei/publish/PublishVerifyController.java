@@ -57,6 +57,7 @@ public class PublishVerifyController {
     @RequestMapping(value = "/publish", method = RequestMethod.POST)
     public PublishResult publish(@RequestBody PublishPO publishPO) {
         PublishResult result = new PublishResult();
+        result.setResult("success");
         String validate = validate(publishPO);
         if (!StringUtils.isEmpty(validate)) {
             result.setResult("fail");
@@ -85,21 +86,6 @@ public class PublishVerifyController {
                 FilePO sourceFile = filePOS.get(0);// 源文件
                 String fileTempDirPath = (tempDirPath + "/" + UUID.randomUUID() + "/").replace("//", "/");
                 String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
-                //判断文件是否存在于发布路径
-                boolean exists = true;
-                if ("obs".equals(publishPO.getUploadType())) {
-                    for (FilePO filePO : filePOS) {
-                        exists = exists && !verifyService.execCmdAndContainsMessage("obsutil stat " +
-                            publishPO.getObsUrl() + (targetPath + "/" + filePO.getName())
-                            .replace("//", "/"), "Error: Status [404]");
-                    }
-                }
-                if ("skip".equals(publishPO.getConflict()) && exists) {
-                    for (FilePO file : filePOS) {
-                        file.setPublishResult("skip");
-                    }
-                    continue;
-                }
                 // 验签
                 boolean isVerifySuccess = true;
                 String authorization = publishPO.getAuthorization();
@@ -110,7 +96,7 @@ public class PublishVerifyController {
                 }
                 // 发布
                 if (isVerifySuccess) {
-                    publishFile(filePOS, targetPath, fileTempDirPath, exists, publishPO);
+                    publishFile(filePOS, targetPath, fileTempDirPath, publishPO, result);
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath);
             }
@@ -121,7 +107,6 @@ public class PublishVerifyController {
             return result;
         }
         result.setFiles(files);
-        result.setResult("success");
         return result;
     }
 
@@ -311,27 +296,35 @@ public class PublishVerifyController {
      * @param filePOS         发布文件列表
      * @param targetPath      发布目标路径
      * @param fileTempDirPath 发布文件临时下载路径
-     * @param exists          发布目标路径是否存在待发布文件
      * @param publishPO       publish model
+     * @param result          发布结果
      * @throws IOException
      * @throws InterruptedException
      */
-    private void publishFile(List<FilePO> filePOS, String targetPath, String fileTempDirPath, boolean exists,
-                             PublishPO publishPO) throws IOException, InterruptedException {
+    private void publishFile(List<FilePO> filePOS, String targetPath, String fileTempDirPath,
+                             PublishPO publishPO, PublishResult result) throws IOException, InterruptedException {
+        //判断文件是否存在于发布路径
+        boolean exists = true;
         if ("obs".equals(publishPO.getUploadType())) {
-            for (FilePO filePO : filePOS) {
-                String fileName = filePO.getName();
-                boolean uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
-                    + fileName + " " + publishPO.getObsUrl() + (targetPath + "/" + filePO.getName())
-                    .replace("//", "/"), "Upload successfully");
-                if (uploadSuccess) {
-                    if (exists) {
-                        filePO.setPublishResult("cover");
-                    } else {
-                        filePO.setPublishResult("normal");
-                    }
+            for (FilePO file : filePOS) {
+                exists = exists && !verifyService.execCmdAndContainsMessage("obsutil stat " +
+                    publishPO.getObsUrl() + (targetPath + "/" + file.getName())
+                    .replace("//", "/"), "Error: Status [404]");
+                if (exists) {
+                    file.setPublishResult("cover");
                 } else {
-                    filePO.setPublishResult("fail");
+                    file.setPublishResult("normal");
+                }
+                if ("skip".equals(publishPO.getConflict()) && exists) {
+                    file.setPublishResult("skip");
+                }
+                String fileName = file.getName();
+                boolean uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
+                    + fileName + " " + publishPO.getObsUrl() + (targetPath + "/" + file.getName())
+                    .replace("//", "/"), "Upload successfully");
+                if (!uploadSuccess) {
+                    file.setPublishResult("fail");
+                    result.setResult("fail");
                 }
             }
         }
