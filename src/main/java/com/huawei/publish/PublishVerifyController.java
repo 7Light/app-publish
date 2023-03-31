@@ -113,7 +113,7 @@ public class PublishVerifyController {
                 if (!"latest/".equals(sourceFile.getParentDir()) && !sourceFile.getParentDir().contains("binarylibs_update/")
                     && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())
                     && !sourceFile.getParentDir().contains("latest/docs/")) {
-                    isSuccess = verifySignature(filePOS, fileTempDirPath, result);
+                    isSuccess = verifySignature(filePOS, fileTempDirPath);
                 }
                 // 发布
                 if (isSuccess) {
@@ -122,6 +122,8 @@ public class PublishVerifyController {
                             publishFile(filePO, targetPath, exists, result);
                         }
                     }
+                } else {
+                    result.setResult("fail");
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath);
             }
@@ -439,7 +441,7 @@ public class PublishVerifyController {
      * @throws IOException
      * @throws InterruptedException
      */
-    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath, PublishResult result) throws IOException, InterruptedException {
+    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath) throws IOException, InterruptedException {
         if (!isMissing(filePOS)) {
             return false;
         }
@@ -468,7 +470,6 @@ public class PublishVerifyController {
         sourceFile.setPublishResult("fail");
         sha256File.setPublishResult("fail");
         ascFile.setPublishResult("fail");
-        result.setResult("fail");
         return false;
     }
 
