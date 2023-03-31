@@ -66,6 +66,7 @@ public class PublishVerifyController {
     @RequestMapping(value = "/publish", method = RequestMethod.POST)
     public PublishResult publish(@RequestBody PublishPO publishPO) {
         PublishResult result = new PublishResult();
+        result.setResult("success");
         String validate = validate(publishPO);
         if (!StringUtils.isEmpty(validate)) {
             result.setResult("fail");
@@ -112,13 +113,13 @@ public class PublishVerifyController {
                 if (!"latest/".equals(sourceFile.getParentDir()) && !sourceFile.getParentDir().contains("binarylibs_update/")
                     && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())
                     && !sourceFile.getParentDir().contains("latest/docs/")) {
-                    isSuccess = verifySignature(filePOS, fileTempDirPath);
+                    isSuccess = verifySignature(filePOS, fileTempDirPath, result);
                 }
                 // 发布
                 if (isSuccess) {
                     if ("obs".equals(publishPO.getUploadType())) {
                         for (FilePO filePO : filePOS) {
-                            publishFile(filePO, targetPath, exists);
+                            publishFile(filePO, targetPath, exists, result);
                         }
                     }
                 }
@@ -131,7 +132,6 @@ public class PublishVerifyController {
             return result;
         }
         result.setFiles(files);
-        result.setResult("success");
         return result;
     }
 
@@ -434,11 +434,12 @@ public class PublishVerifyController {
      *
      * @param filePOS         源文件、sha256文件、asc文件
      * @param fileTempDirPath 文件临时下载路径
+     * @param result
      * @return 是否验签成功
      * @throws IOException
      * @throws InterruptedException
      */
-    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath) throws IOException, InterruptedException {
+    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath, PublishResult result) throws IOException, InterruptedException {
         if (!isMissing(filePOS)) {
             return false;
         }
@@ -467,6 +468,7 @@ public class PublishVerifyController {
         sourceFile.setPublishResult("fail");
         sha256File.setPublishResult("fail");
         ascFile.setPublishResult("fail");
+        result.setResult("fail");
         return false;
     }
 
@@ -539,12 +541,12 @@ public class PublishVerifyController {
 
     /**
      * 文件发布
-     *
-     * @param file       发布的文件
+     *  @param file       发布的文件
      * @param targetPath 发布的目标路径
      * @param exists     发布目标路径中是否存在该文件
+     * @param result
      */
-    private void publishFile(FilePO file, String targetPath, boolean exists) {
+    private void publishFile(FilePO file, String targetPath, boolean exists, PublishResult result) {
         String fileName = file.getName();
         boolean uploadSuccess = obsUtil.copyObject(file.getParentDir() + fileName, targetPath + fileName);
         if (uploadSuccess) {
@@ -555,6 +557,7 @@ public class PublishVerifyController {
             }
         } else {
             file.setPublishResult("fail");
+            result.setResult("fail");
         }
     }
 
