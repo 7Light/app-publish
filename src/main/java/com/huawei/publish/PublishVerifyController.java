@@ -99,6 +99,21 @@ public class PublishVerifyController {
                 FilePO sourceFile = fileList.get(0);
                 String fileTempDirPath = (tempDirPath + "/" + UUID.randomUUID() + "/").replace("//", "/");
                 String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
+                //判断文件是否存在于发布路径
+                boolean exists = true;
+                if ("obs".equals(publishObject.getUploadType())) {
+                    for (FilePO file : fileList) {
+                        exists = exists && !verifyService.execCmdAndContainsMessage("obsutil stat " +
+                            publishObject.getObsUrl() + (targetPath + "/" + file.getName())
+                            .replace("//", "/"), "Error: Status [404]");
+                    }
+                }
+                if ("skip".equals(publishObject.getConflict()) && exists) {
+                    for (FilePO file : fileList) {
+                        file.setPublishResult("skip");
+                    }
+                    continue;
+                }
                 // 验签
                 boolean isVerifySuccess = true;
                 String authorization = publishObject.getAuthorization();
@@ -109,7 +124,7 @@ public class PublishVerifyController {
                 }
                 // 发布
                 if (isVerifySuccess) {
-                    publishFile(fileList, targetPath, fileTempDirPath, publishObject, result);
+                    publishFile(fileList, fileTempDirPath, publishObject, result, exists);
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath);
             }
@@ -307,27 +322,21 @@ public class PublishVerifyController {
      * 文件发布
      *
      * @param files           发布文件列表
-     * @param targetPath      发布目标路径
      * @param fileTempDirPath 发布文件临时下载路径
      * @param publish         publish model
      * @param result          发布结果
+     * @param exists          路径是否存在
      */
-    private void publishFile(List<FilePO> files, String targetPath, String fileTempDirPath,
-                             PublishPO publish, PublishResult result) throws IOException, InterruptedException {
-        // 判断文件是否存在于发布路径
-        boolean exists = true;
+    private void publishFile(List<FilePO> files, String fileTempDirPath,
+                             PublishPO publish, PublishResult result, boolean exists) throws IOException, InterruptedException {
         if (AppConst.UPLOAD_TYPE_OBS.equals(publish.getUploadType())) {
+            FilePO sourceFile = files.get(0);
+            String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
             for (FilePO file : files) {
-                exists = exists && !verifyService.execCmdAndContainsMessage("obsutil stat " +
-                    publish.getObsUrl() + (targetPath + "/" + file.getName())
-                    .replace("//", "/"), "Error: Status [404]");
                 if (exists) {
                     file.setPublishResult("cover");
                 } else {
                     file.setPublishResult("normal");
-                }
-                if ("skip".equals(publish.getConflict()) && exists) {
-                    file.setPublishResult("skip");
                 }
                 String fileName = file.getName();
                 boolean uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
