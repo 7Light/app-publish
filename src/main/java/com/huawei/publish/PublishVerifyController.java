@@ -10,10 +10,12 @@ import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.ObsUtil;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -31,19 +33,24 @@ import java.util.UUID;
 
 /**
  * main controller
+ * @author chentao
  */
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
-    private static Map<String, PublishResult> publishResult = new HashMap<>();
+    private static Map<String, PublishResult> publishResultMap = new HashMap<>();
     private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
     private static Map<String, Map<String, String>> sbomTaskIdMap = new HashMap<>();
-    private static Logger log = Logger.getLogger(PublishVerifyController.class);
+    private static final Logger log = Logger.getLogger(PublishVerifyController.class);
     private VerifyService verifyService;
     private static ObsUtil obsUtil = new ObsUtil();
+
     @Autowired
     private SbomService sbomService;
 
+    @Autowired
+    @Qualifier("publishTaskExecutor")
+    private ThreadPoolTaskExecutor publishTaskExecutor;
     /**
      * heartbeat
      *
@@ -51,7 +58,7 @@ public class PublishVerifyController {
      */
     @RequestMapping(value = "/heartbeat", method = RequestMethod.GET)
     public Map<String, Object> heartbeat() {
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>(1);
         result.put("result", "success");
         log.info("heartbeat");
         return result;
@@ -60,22 +67,22 @@ public class PublishVerifyController {
     /**
      * publish
      *
-     * @param publishPO publish model
+     * @param publishObject publish model
      * @return PublishResult PublishResult
      */
     @RequestMapping(value = "/publish", method = RequestMethod.POST)
-    public PublishResult publish(@RequestBody PublishPO publishPO) {
+    public PublishResult publish(@RequestBody PublishPO publishObject) {
         PublishResult result = new PublishResult();
         result.setResult("success");
-        String validate = validate(publishPO);
+        String validate = validate(publishObject);
         if (!StringUtils.isEmpty(validate)) {
             result.setResult("fail");
             result.setMessage("Validate failed, " + validate);
             return result;
         }
-        verifyService = new VerifyService(publishPO);
-        List<FilePO> files = publishPO.getFiles();
-        String tempDirPath = publishPO.getTempDir();
+        verifyService = new VerifyService(publishObject);
+        List<FilePO> originalFiles = publishObject.getFiles();
+        String tempDirPath = publishObject.getTempDir();
         try {
             if (!StringUtils.isEmpty(tempDirPath)) {
                 File tempDir = new File(tempDirPath);
@@ -83,27 +90,29 @@ public class PublishVerifyController {
                     verifyService.execCmd("mkdir -p " + tempDirPath);
                 }
             }
-            List<FilePO> missFiles = new ArrayList<>();// 存储缺失源文件的sha256,asc文件
-            List<List<FilePO>> filePOList = getFilePOList(files, missFiles);
+            // 存储缺失源文件的sha256,asc文件
+            List<FilePO> missFiles = new ArrayList<>();
+            List<List<FilePO>> filesList = getFileList(originalFiles, missFiles);
             if (!CollectionUtils.isEmpty(missFiles)) {
                 for (FilePO missFile : missFiles) {
                     missFile.setVerifyResult("no source file");
                     missFile.setPublishResult("fail");
                 }
             }
-            for (List<FilePO> filePOS : filePOList) {
-                FilePO sourceFile = filePOS.get(0);// 源文件
+            for (List<FilePO> files : filesList) {
+                // 源文件
+                FilePO sourceFile = files.get(0);
                 String fileTempDirPath = tempDirPath + "/" + UUID.randomUUID() + "/";
                 String targetPath = StringUtils.isEmpty(sourceFile.getTargetPath()) ? "" : sourceFile.getTargetPath().trim();
-                //判断文件是否存在于发布路径
+                // 判断文件是否存在于发布路径
                 boolean exists = true;
-                if ("obs".equals(publishPO.getUploadType())) {
-                    for (FilePO filePO : filePOS) {
-                        exists = exists && obsUtil.isExist(targetPath + filePO.getName());
+                if ("obs".equals(publishObject.getUploadType())) {
+                    for (FilePO file : files) {
+                        exists = exists && obsUtil.isExist(targetPath + file.getName());
                     }
                 }
-                if ("skip".equals(publishPO.getConflict()) && exists) {
-                    for (FilePO file : filePOS) {
+                if ("skip".equals(publishObject.getConflict()) && exists) {
+                    for (FilePO file : files) {
                         file.setPublishResult("skip");
                     }
                     continue;
@@ -113,13 +122,13 @@ public class PublishVerifyController {
                 if (!"latest/".equals(sourceFile.getParentDir()) && !sourceFile.getParentDir().contains("binarylibs_update/")
                     && !sourceFile.getParentDir().contains("binarylibs/") && !"git_num.txt".equals(sourceFile.getName())
                     && !sourceFile.getParentDir().contains("latest/docs/")) {
-                    isSuccess = verifySignature(filePOS, fileTempDirPath);
+                    isSuccess = verifySignature(files, fileTempDirPath);
                 }
                 // 发布
                 if (isSuccess) {
-                    if ("obs".equals(publishPO.getUploadType())) {
-                        for (FilePO filePO : filePOS) {
-                            publishFile(filePO, targetPath, exists, result);
+                    if ("obs".equals(publishObject.getUploadType())) {
+                        for (FilePO file : files) {
+                            publishFile(file, targetPath, exists, result);
                         }
                     }
                 } else {
@@ -133,63 +142,60 @@ public class PublishVerifyController {
             result.setMessage("publish failed, " + e.getMessage());
             return result;
         }
-        result.setFiles(files);
+        result.setFiles(originalFiles);
         return result;
     }
 
     @RequestMapping(value = "/publishAsync", method = RequestMethod.POST)
-    public String publishAsync(@RequestBody PublishPO publishPO) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                PublishResult publish = publish(publishPO);
-                publishResult.put(publishPO.getPublishId(), publish);
-            }
-        }).start();
+    public String publishAsync(@RequestBody PublishPO publishObject) {
+        publishTaskExecutor.execute(() -> {
+            PublishResult publishResult = publish(publishObject);
+            publishResultMap.put(publishObject.getPublishId(), publishResult);
+        });
         return "Start publish task success.";
     }
 
     @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
-    public PublishResult getPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
-        return publishResult.get(publishId);
+    public PublishResult getPublishResult(@RequestParam(value = "publishId") String publishId) {
+        return publishResultMap.get(publishId);
     }
 
     /**
      * 查询sbom发布结果
      *
-     * @param sbomPO sbomPO
+     * @param sbomObject sbomObject
      * @return SbomResultPO
      */
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
-    public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
-        SbomResultPO sbomResultPO = new SbomResultPO();
-        String message = validateSbomPO(sbomPO);
+    public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomObject) {
+        SbomResultPO sbomResult = new SbomResultPO();
+        String message = validateSbom(sbomObject);
         if (!StringUtils.isEmpty(message)) {
-            sbomResultPO.setMessage(message);
-            sbomResultPO.setResult("failed");
-            return sbomResultPO;
+            sbomResult.setMessage(message);
+            sbomResult.setResult("failed");
+            return sbomResult;
         }
-        String publishId = sbomPO.getPublishId();
+        String publishId = sbomObject.getPublishId();
         if (sbomResultMap.containsKey(publishId)) {
             // 有sbom发布结果
-            sbomResultPO = sbomResultMap.get(publishId);
+            sbomResult = sbomResultMap.get(publishId);
             Map<String, String> taskId = sbomTaskIdMap.get(publishId);
-            sbomResultPO.setTaskId(taskId);
-            String result = sbomResultPO.getResult();
+            sbomResult.setTaskId(taskId);
+            String result = sbomResult.getResult();
             if ("publishing".equals(result)) {
-                return sbomResultPO;
+                return sbomResult;
             }
             // sbom发布成功的包查询sbom归档链接
-            String resultUrl = sbomPO.getQuerySbomPublishResultUrl();
+            String resultUrl = sbomObject.getQuerySbomPublishResultUrl();
             boolean flag = true;
-            for (FilePO file : sbomResultPO.getFiles()) {
+            for (FilePO file : sbomResult.getFiles()) {
                 if (!"publish success".equals(file.getSbomResult())) {
                     continue;
                 }
                 String key = file.getParentDir() + file.getName();
                 if (!taskId.containsKey(key)) {
                     file.setSbomResult("publish fail");
-                    sbomResultPO.setPublishSuccess(false);
+                    sbomResult.setPublishSuccess(false);
                     continue;
                 }
                 String url = resultUrl.endsWith("/") ? resultUrl + taskId.get(key) : resultUrl + "/" + taskId.get(key);
@@ -202,44 +208,44 @@ public class PublishVerifyController {
                 file.setSbomRef(querySbomMap.get("sbomRef"));
                 file.setSbomResult("success");
             }
-            if (flag && sbomResultPO.isPublishSuccess()) {
-                sbomResultPO.setResult("success");
+            if (flag && sbomResult.isPublishSuccess()) {
+                sbomResult.setResult("success");
             } else {
-                sbomResultPO.setResult("partial success");
+                sbomResult.setResult("partial success");
             }
-            sbomResultMap.put(publishId, sbomResultPO);
+            sbomResultMap.put(publishId, sbomResult);
             // sbom发布失败的包再次尝试发布
-            if (CollectionUtils.isEmpty(taskId) || !sbomResultPO.isPublishSuccess()) {
-                PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-                sbomResultAsync(sbomPO, publishResult.getFiles());
+            if (CollectionUtils.isEmpty(taskId) || !sbomResult.isPublishSuccess()) {
+                PublishResult publishResult = JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
+                sbomResultAsync(sbomObject, publishResult.getFiles());
             }
         } else {
             // 无sbom发布结果
-            sbomResultPO = new SbomResultPO();
-            sbomResultPO.setResult("publishing");
+            sbomResult = new SbomResultPO();
+            sbomResult.setResult("publishing");
             // 初始化taskId
             Map<String, String> taskId = new HashMap<>();
             sbomTaskIdMap.put(publishId, taskId);
-            sbomResultPO.setTaskId(taskId);
-            sbomResultMap.put(publishId, sbomResultPO);
+            sbomResult.setTaskId(taskId);
+            sbomResultMap.put(publishId, sbomResult);
             // 异步发布
-            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-            sbomResultAsync(sbomPO, publishResult.getFiles());
+            PublishResult publishResult = JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
+            sbomResultAsync(sbomObject, publishResult.getFiles());
         }
         return sbomResultMap.get(publishId);
     }
 
-    private String validateSbomPO(SbomPO sbomPO) {
-        if (StringUtils.isEmpty(sbomPO.getPublishSbomUrl())) {
+    private String validateSbom(SbomPO sbomObject) {
+        if (StringUtils.isEmpty(sbomObject.getPublishSbomUrl())) {
             return "publishSbomUrl connot be blank";
         }
-        if (StringUtils.isEmpty(sbomPO.getQuerySbomPublishResultUrl())) {
+        if (StringUtils.isEmpty(sbomObject.getQuerySbomPublishResultUrl())) {
             return "querySbomPublishResultUrl connot be blank";
         }
-        if (StringUtils.isEmpty(sbomPO.getPublishId())) {
+        if (StringUtils.isEmpty(sbomObject.getPublishId())) {
             return "publishId connot be blank";
         }
-        if (StringUtils.isEmpty(sbomPO.getPublishResultDetail())) {
+        if (StringUtils.isEmpty(sbomObject.getPublishResultDetail())) {
             return "publishResultDetail connot be blank";
         }
         return "";
@@ -248,15 +254,13 @@ public class PublishVerifyController {
     /**
      * 发布sbom
      *
-     * @param sbomPO sbomPO
+     * @param sbomObject sbomObject
      * @param files  发布的files
      */
-    public void sbomResultAsync(SbomPO sbomPO, List<FilePO> files) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
+    public void sbomResultAsync(SbomPO sbomObject, List<FilePO> files) {
+        publishTaskExecutor.execute(() -> {
                 SbomResultPO sbomResult = new SbomResultPO();
-                Map<String, String> taskId = sbomTaskIdMap.get(sbomPO.getPublishId());
+                Map<String, String> taskId = sbomTaskIdMap.get(sbomObject.getPublishId());
                 boolean flag = false;
                 for (FilePO file : files) {
                     // 不做sbom发布的文件
@@ -282,7 +286,7 @@ public class PublishVerifyController {
                     }
                     String sbomContent = obsUtil.getSbomContent(sbomParentDir + sbomFileName);
                     String productName = parentDir.substring(parentDir.substring(0, parentDir.length() - 1).lastIndexOf("/") + 1) + fileName;
-                    Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomPO, sbomContent, productName);
+                    Map<String, String> publishSbomMap = sbomService.publishSbomFile(sbomObject, sbomContent, productName);
                     if (!"success".equals(publishSbomMap.get("result"))) {
                         if (publishSbomMap.get("errorInfo").contains("has sbom import job in running")) {
                             // 发布任务正在进行中
@@ -299,10 +303,9 @@ public class PublishVerifyController {
                 }
                 sbomResult.setPublishSuccess(!flag);
                 sbomResult.setFiles(files);
-                sbomResult.setSbomPO(sbomPO);
-                sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
-            }
-        }).start();
+                sbomResult.setSbomPO(sbomObject);
+                sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+            });
     }
 
     /**
@@ -361,15 +364,18 @@ public class PublishVerifyController {
     /**
      * 封装FilePO, 源文件、对应的sha256、对应的asc存入list集合,对应索引0,1,2
      *
-     * @param files     要发布的文件
+     * @param originalFiles     要发布的文件(原文件)
      * @param missFiles 存储缺失源文件的sha256和asc文件
      * @return List<List < FilePO>>
      */
-    private List<List<FilePO>> getFilePOList(List<FilePO> files, List<FilePO> missFiles) {
-        List<FilePO> sourceFiles = new ArrayList<>();//存源文件
-        List<FilePO> sha256Files = new ArrayList<>();//存sha256文件
-        List<FilePO> ascFiles = new ArrayList<>();//存asc源文件
-        for (FilePO file : files) {
+    private List<List<FilePO>> getFileList(List<FilePO> originalFiles, List<FilePO> missFiles) {
+        // 存源文件
+        List<FilePO> sourceFiles = new ArrayList<>();
+        // 存sha256文件
+        List<FilePO> sha256Files = new ArrayList<>();
+        // 存asc源文件
+        List<FilePO> ascFiles = new ArrayList<>();
+        for (FilePO file : originalFiles) {
             if (file.getName().endsWith(".sha256")) {
                 sha256Files.add(file);
             } else if (file.getName().endsWith(".sha256.asc")) {
@@ -379,29 +385,29 @@ public class PublishVerifyController {
             }
         }
         List<List<FilePO>> list = new ArrayList<>();
-        for (FilePO filePO : sourceFiles) {
-            List<FilePO> filePOS = new ArrayList<>();
-            filePOS.add(filePO);
-            if ("latest/".equals(filePO.getParentDir()) || filePO.getParentDir().contains("binarylibs_update/")
-                || filePO.getParentDir().contains("binarylibs/") || "git_num.txt".equals(filePO.getName())
-                || filePO.getParentDir().contains("latest/docs/")) {
-                list.add(filePOS);
+        for (FilePO file : sourceFiles) {
+            List<FilePO> files = new ArrayList<>();
+            files.add(file);
+            if ("latest/".equals(file.getParentDir()) || file.getParentDir().contains("binarylibs_update/")
+                || file.getParentDir().contains("binarylibs/") || "git_num.txt".equals(file.getName())
+                || file.getParentDir().contains("latest/docs/")) {
+                list.add(files);
                 continue;
             }
-            String sourceName = filePO.getName();
+            String sourceName = file.getName();
             if (sourceName.endsWith(".tar.bz2")) {
                 for (FilePO sha256File : sha256Files) {
                     if (sha256File.getName().equals(sourceName.replace(".tar.bz2", ".sha256")) &&
-                        filePO.getParentDir().equals(sha256File.getParentDir())) {
-                        filePOS.add(sha256File);
+                        file.getParentDir().equals(sha256File.getParentDir())) {
+                        files.add(sha256File);
                         sha256Files.remove(sha256File);
                         break;
                     }
                 }
                 for (FilePO ascFile : ascFiles) {
                     if (ascFile.getName().equals(sourceName.replace(".tar.bz2", ".sha256.asc")) &&
-                        filePO.getParentDir().equals(ascFile.getParentDir())) {
-                        filePOS.add(ascFile);
+                        file.getParentDir().equals(ascFile.getParentDir())) {
+                        files.add(ascFile);
                         ascFiles.remove(ascFile);
                         break;
                     }
@@ -409,22 +415,22 @@ public class PublishVerifyController {
             } else {
                 for (FilePO sha256File : sha256Files) {
                     if (sha256File.getName().equals(sourceName + ".sha256") &&
-                        filePO.getParentDir().equals(sha256File.getParentDir())) {
-                        filePOS.add(sha256File);
+                        file.getParentDir().equals(sha256File.getParentDir())) {
+                        files.add(sha256File);
                         sha256Files.remove(sha256File);
                         break;
                     }
                 }
                 for (FilePO ascFile : ascFiles) {
                     if (ascFile.getName().equals(sourceName + ".sha256.asc") &&
-                        filePO.getParentDir().equals(ascFile.getParentDir())) {
-                        filePOS.add(ascFile);
+                        file.getParentDir().equals(ascFile.getParentDir())) {
+                        files.add(ascFile);
                         ascFiles.remove(ascFile);
                         break;
                     }
                 }
             }
-            list.add(filePOS);
+            list.add(files);
         }
         missFiles.addAll(sha256Files);
         missFiles.addAll(ascFiles);
@@ -434,24 +440,26 @@ public class PublishVerifyController {
     /**
      * 文件验签
      *
-     * @param filePOS         源文件、sha256文件、asc文件
+     * @param files         源文件、sha256文件、asc文件
      * @param fileTempDirPath 文件临时下载路径
-     * @param result
      * @return 是否验签成功
-     * @throws IOException
-     * @throws InterruptedException
+     * @throws IOException  异常
+     * @throws InterruptedException  异常
      */
-    private boolean verifySignature(List<FilePO> filePOS, String fileTempDirPath) throws IOException, InterruptedException {
-        if (!isMissing(filePOS)) {
+    private boolean verifySignature(List<FilePO> files, String fileTempDirPath) throws IOException, InterruptedException {
+        if (!isMissing(files)) {
             return false;
         }
-        FilePO sourceFile = filePOS.get(0);// 源文件
-        FilePO sha256File = filePOS.get(1);// sha256文件
-        FilePO ascFile = filePOS.get(2);// asc文件
+        // 源文件
+        FilePO sourceFile = files.get(0);
+        // sha256文件
+        FilePO sha256File = files.get(1);
+        // asc文件
+        FilePO ascFile = files.get(2);
         File fileTempDir = new File(fileTempDirPath);
         fileTempDir.mkdir();
-        for (FilePO filePO : filePOS) {
-            obsUtil.downFile(filePO.getParentDir() + filePO.getName(), fileTempDirPath + filePO.getName());
+        for (FilePO file : files) {
+            obsUtil.downFile(file.getParentDir() + file.getName(), fileTempDirPath + file.getName());
         }
         String verifyMessage = verify(fileTempDirPath, sourceFile, sha256File, ascFile);
         if (StringUtils.isEmpty(verifyMessage)) {
@@ -474,51 +482,51 @@ public class PublishVerifyController {
     }
 
     /**
-     * 判断filePOS是否缺失文件
+     * 判断files是否缺失文件
      *
-     * @param filePOS filePOS
+     * @param files files
      * @return false：缺失  true：不缺失
      */
-    private boolean isMissing(List<FilePO> filePOS) {
-        if (filePOS.size() < 3) {
-            FilePO file = filePOS.get(0);
-            String fileName = file.getName();
+    private boolean isMissing(List<FilePO> files) {
+        if (files.size() < 3) {
+            FilePO sourceFile = files.get(0);
+            String fileName = sourceFile.getName();
             //判断源文件对应的.sha256文件、.sha256.asc文件是否存在
             boolean sha256Exist = false;
             boolean ascExist = false;
             if (fileName.endsWith(".tar.bz2")) {
-                for (FilePO filePO : filePOS) {
-                    if (filePO.getName().equals(fileName.replace(".tar.bz2", ".sha256"))) {
+                for (FilePO file : files) {
+                    if (file.getName().equals(fileName.replace(".tar.bz2", ".sha256"))) {
                         sha256Exist = true;
                     }
-                    if (filePO.getName().equals(fileName.replace(".tar.bz2", ".sha256.asc"))) {
+                    if (file.getName().equals(fileName.replace(".tar.bz2", ".sha256.asc"))) {
                         ascExist = true;
                     }
                 }
             } else {
-                for (FilePO filePO : filePOS) {
-                    if (filePO.getName().equals(fileName + ".sha256")) {
+                for (FilePO file : files) {
+                    if (file.getName().equals(fileName + ".sha256")) {
                         sha256Exist = true;
                     }
-                    if (filePO.getName().equals(fileName + ".sha256.asc")) {
+                    if (file.getName().equals(fileName + ".sha256.asc")) {
                         ascExist = true;
                     }
                 }
             }
             if (!sha256Exist && !ascExist) {
-                file.setVerifyResult("no sha256 and asc signature");
-                file.setPublishResult("fail");
+                sourceFile.setVerifyResult("no sha256 and asc signature");
+                sourceFile.setPublishResult("fail");
                 return false;
             } else if (!sha256Exist) {
-                file.setVerifyResult("no sha256 signature");
-                file.setPublishResult("fail");
-                filePOS.get(1).setPublishResult("fail");
+                sourceFile.setVerifyResult("no sha256 signature");
+                sourceFile.setPublishResult("fail");
+                files.get(1).setPublishResult("fail");
                 return false;
             } else if (!ascExist) {
-                file.setVerifyResult("no asc signature");
-                filePOS.get(1).setVerifyResult("no asc signature");
-                file.setPublishResult("fail");
-                filePOS.get(1).setPublishResult("fail");
+                sourceFile.setVerifyResult("no asc signature");
+                files.get(1).setVerifyResult("no asc signature");
+                sourceFile.setPublishResult("fail");
+                files.get(1).setPublishResult("fail");
                 return false;
             }
         }
@@ -562,19 +570,19 @@ public class PublishVerifyController {
         }
     }
 
-    private String validate(PublishPO publishPO) {
-        if (StringUtils.isEmpty(publishPO.getGpgKeyUrl())) {
+    private String validate(PublishPO publishObject) {
+        if (StringUtils.isEmpty(publishObject.getGpgKeyUrl())) {
             return "key url cannot be blank.";
         }
-        if (CollectionUtils.isEmpty(publishPO.getFiles())) {
+        if (CollectionUtils.isEmpty(publishObject.getFiles())) {
             return "files cannot be empty.";
         }
-        for (FilePO file : publishPO.getFiles()) {
+        for (FilePO file : publishObject.getFiles()) {
             if (StringUtils.isEmpty(file.getTargetPath())) {
                 return "file target path can not be empty.";
             }
             File targetFile = new File(file.getTargetPath().trim() + "/" + file.getName());
-            if ("error".equals(publishPO.getConflict()) && targetFile.exists()) {
+            if ("error".equals(publishObject.getConflict()) && targetFile.exists()) {
                 return file.getName() + " already published.";
             }
         }
