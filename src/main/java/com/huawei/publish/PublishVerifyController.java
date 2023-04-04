@@ -71,6 +71,7 @@ public class PublishVerifyController {
     @RequestMapping(value = "/publish", method = RequestMethod.POST)
     public PublishResult publish(@RequestBody PublishPO publishPO) {
         PublishResult result = new PublishResult();
+        result.setResult("success");
         String validate = validate(publishPO);
         if (!StringUtils.isEmpty(validate)) {
             result.setResult("fail");
@@ -97,6 +98,7 @@ public class PublishVerifyController {
                 String verifyMessage = verify(tempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
                     file.setVerifyResult(verifyMessage);
+                    result.setResult("fail");
                     continue;
                 } else {
                     file.setVerifyResult("success");
@@ -118,6 +120,7 @@ public class PublishVerifyController {
                     + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/" + fileName);
                 if (!StringUtils.isEmpty(outPut)) {
                     file.setPublishResult("failed");
+                    result.setResult("fail");
                     continue;
                 }
                 if ("exists".equals(fileExistsFlag)) {
@@ -143,7 +146,6 @@ public class PublishVerifyController {
             return result;
         }
         result.setFiles(files);
-        result.setResult("success");
         return result;
     }
 
