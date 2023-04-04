@@ -6,6 +6,7 @@ import com.huawei.publish.model.PublishPO;
 import com.huawei.publish.model.PublishResult;
 import com.huawei.publish.service.FileDownloadService;
 import com.huawei.publish.service.VerifyService;
+import com.huawei.publish.utils.CacheUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -33,8 +35,6 @@ import java.util.UUID;
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
-    private static Map<String, PublishResult> publishResultMap = new HashMap<>();
-
     private static final Logger log = Logger.getLogger(PublishVerifyController.class);
 
     @Autowired
@@ -142,14 +142,22 @@ public class PublishVerifyController {
     public String publishAsync(@RequestBody PublishPO publishObject) {
         publishTaskExecutor.execute(() -> {
             PublishResult publishResult = publish(publishObject);
-            publishResultMap.put(publishObject.getPublishId(), publishResult);
+            CacheUtil.put(publishObject.getPublishId(), publishResult);
         });
         return "Start publish task success.";
     }
 
     @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
     public PublishResult getPublishResult(@RequestParam(value = "publishId") String publishId) {
-        return publishResultMap.get(publishId);
+        if (Objects.isNull(CacheUtil.get(publishId))) {
+            return new PublishResult();
+        }
+        PublishResult result = (PublishResult) CacheUtil.get(publishId);
+        if (!StringUtils.isEmpty(result.getResult())) {
+            // 发布成功后缓存5分钟过期
+            CacheUtil.setCacheExpiration(publishId, 60*5);
+        }
+        return result;
     }
 
     /**
