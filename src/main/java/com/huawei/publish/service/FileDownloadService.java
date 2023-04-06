@@ -1,11 +1,10 @@
 package com.huawei.publish.service;
 
-import com.huawei.publish.PublishVerifyController;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.InputStream;
@@ -15,11 +14,12 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * file download component
+ * @author chentao
  */
 @Component
 public class FileDownloadService {
 
-    private static Logger log = Logger.getLogger(PublishVerifyController.class);
+    private static final Logger log = Logger.getLogger(FileDownloadService.class);
     /**
      * @param url      downloadUrl
      * @param dir      save path
