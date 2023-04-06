@@ -1,6 +1,7 @@
 package com.huawei.publish;
 
 import com.alibaba.fastjson.JSONObject;
+import com.huawei.publish.enums.AppConst;
 import com.huawei.publish.model.ArchiveInfoPO;
 import com.huawei.publish.model.FilePO;
 import com.huawei.publish.model.PublishPO;
@@ -15,6 +16,8 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,6 +39,7 @@ import java.util.Set;
 
 /**
  * main controller
+ * @author chentao
  */
 @RequestMapping(path = "/publish")
 @RestController
@@ -46,9 +50,15 @@ public class PublishVerifyController {
 
     @Autowired
     private FileDownloadService fileDownloadService;
+
     private VerifyService verifyService;
+
     @Autowired
     private SbomService sbomService;
+
+    @Autowired
+    @Qualifier("publishTaskExecutor")
+    private ThreadPoolTaskExecutor publishTaskExecutor;
 
     /**
      * heartbeat
@@ -57,7 +67,7 @@ public class PublishVerifyController {
      */
     @RequestMapping(value = "/heartbeat", method = RequestMethod.GET)
     public Map<String, Object> heartbeat() {
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>(2);
         result.put("result", "success");
         return result;
     }
@@ -65,22 +75,22 @@ public class PublishVerifyController {
     /**
      * publish
      *
-     * @param publishPO publish model
+     * @param publishObject publish model
      * @return PublishResult PublishResult
      */
     @RequestMapping(value = "/publish", method = RequestMethod.POST)
-    public PublishResult publish(@RequestBody PublishPO publishPO) {
+    public PublishResult publish(@RequestBody PublishPO publishObject) {
         PublishResult result = new PublishResult();
         result.setResult("success");
-        String validate = validate(publishPO);
+        String validate = validate(publishObject);
         if (!StringUtils.isEmpty(validate)) {
             result.setResult("fail");
             result.setMessage("Validate failed, " + validate);
             return result;
         }
-        verifyService = new VerifyService(publishPO);
-        List<FilePO> files = publishPO.getFiles();
-        String tempDirPath = getTempDirPath(publishPO.getTempDir());
+        verifyService = new VerifyService(publishObject);
+        List<FilePO> files = publishObject.getFiles();
+        String tempDirPath = getTempDirPath(publishObject.getTempDir());
         try {
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
@@ -89,8 +99,8 @@ public class PublishVerifyController {
             for (FilePO file : files) {
                 String fileName = file.getName();
                 String fileExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                    + publishPO.getRemoteRepoIp() + " \"[ -f " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
-                if ("skip".equals(publishPO.getConflict()) && "exists".equals(fileExistsFlag)) {
+                    + publishObject.getRemoteRepoIp() + " \"[ -f " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
+                if ("skip".equals(publishObject.getConflict()) && "exists".equals(fileExistsFlag)) {
                     file.setPublishResult("skip");
                     continue;
                 }
@@ -107,35 +117,35 @@ public class PublishVerifyController {
                 if (!targetPathDir.exists()) {
                     targetPathDir.mkdirs();
                 }
-                if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith("/")) {
-                    tempDirPath = tempDirPath + "/";
+                if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith(AppConst.SLASH)) {
+                    tempDirPath = tempDirPath + AppConst.SLASH;
                 }
                 String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                    + publishPO.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
-                if (!"exists".equals(folderExistsFlag)) {
+                    + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
+                if (!AppConst.EXISTS.equals(folderExistsFlag)) {
                     verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                        + publishPO.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
+                        + publishObject.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
                 }
                 String outPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
-                    + fileName + " root@" + publishPO.getRemoteRepoIp() + ":" + file.getTargetPath() + "/" + fileName);
+                    + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
                 if (!StringUtils.isEmpty(outPut)) {
                     file.setPublishResult("failed");
                     result.setResult("fail");
                     continue;
                 }
-                if ("exists".equals(fileExistsFlag)) {
+                if (AppConst.EXISTS.equals(fileExistsFlag)) {
                     file.setPublishResult("cover");
                 } else {
                     file.setPublishResult("normal");
                 }
             }
             verifyService.execCmd("rm -rf " + tempDirPath);
-            if (!CollectionUtils.isEmpty(publishPO.getRepoIndexList())) {
-                for (RepoIndex repoIndex : publishPO.getRepoIndexList()) {
+            if (!CollectionUtils.isEmpty(publishObject.getRepoIndexList())) {
+                for (RepoIndex repoIndex : publishObject.getRepoIndexList()) {
                     if (repoIndex != null) {
                         if ("createrepo".equals(repoIndex.getIndexType())) {
                             verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                                + publishPO.getRemoteRepoIp() + " \"createrepo -d " + repoIndex.getRepoPath() + "\"");
+                                + publishObject.getRemoteRepoIp() + " \"createrepo -d " + repoIndex.getRepoPath() + "\"");
                         }
                     }
                 }
@@ -150,14 +160,11 @@ public class PublishVerifyController {
     }
 
     @RequestMapping(value = "/publishAsync", method = RequestMethod.POST)
-    public String publishAsync(@RequestBody PublishPO publishPO) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                PublishResult publish = publish(publishPO);
-                publishResult.put(publishPO.getPublishId(), publish);
-            }
-        }).start();
+    public String publishAsync(@RequestBody PublishPO publishObject) {
+        publishTaskExecutor.execute(() -> {
+            PublishResult publish = publish(publishObject);
+            publishResult.put(publishObject.getPublishId(), publish);
+        });
         return "Start publish task success.";
     }
 
@@ -167,29 +174,31 @@ public class PublishVerifyController {
     }
 
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
-    public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomPO) {
-        String publishId = sbomPO.getPublishId();
+    public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomObject) {
+        String publishId = sbomObject.getPublishId();
         SbomResultPO sbomResult = sbomResultMap.get(publishId);
         if (sbomResult != null) {
             if (sbomResult.getTaskId() == null) {
-                if ("publishing".equals(sbomResult.getResult()) && !StringUtils.isEmpty(sbomResult.getMessage())) {
+                if (AppConst.PUBLISHING.equals(sbomResult.getResult())
+                    && !StringUtils.isEmpty(sbomResult.getMessage())) {
                     sbomResult.setMessage("");
                     // 请求失败，再次发起
-                    PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-                    sbomResultAsync(sbomPO, publishResult.getFiles());
+                    PublishResult publishResult =
+                        JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
+                    sbomResultAsync(sbomObject, publishResult.getFiles());
                 }
                 return sbomResult;
             }
             Map<String, String> taskIdMap = sbomResult.getTaskId();
-            Map<String, String> sbomRefMap = new HashMap<>();
+            Map<String, String> sbomRefMap = new HashMap<>(16);
             for (String key : taskIdMap.keySet()) {
                 String taskId = taskIdMap.get(key);
                 Map<String, String> queryResult = sbomService.querySbomPublishResult(
-                    sbomPO.getQuerySbomPublishResultUrl() + "/" + taskId);
+                    sbomObject.getQuerySbomPublishResultUrl() + AppConst.SLASH + taskId);
                 sbomResult.setResult(queryResult.get("result"));
                 if (!"success".equals(queryResult.get("result"))) {
                     sbomResult.setMessage(queryResult.get("errorInfo"));
-                    sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
+                    sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
                     return sbomResult;
                 }
                 sbomResult.setMessage("");
@@ -206,61 +215,58 @@ public class PublishVerifyController {
             sbomResult = new SbomResultPO();
             sbomResult.setResult("publishing");
             sbomResultMap.put(publishId, sbomResult);
-            PublishResult publishResult = JSONObject.parseObject(sbomPO.getPublishResultDetail(), PublishResult.class);
-            sbomResultAsync(sbomPO, publishResult.getFiles());
+            PublishResult publishResult = JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
+            sbomResultAsync(sbomObject, publishResult.getFiles());
         }
         return sbomResultMap.get(publishId);
     }
 
-    public void sbomResultAsync(SbomPO sbomPO, List<FilePO> files) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Set<String> targetPaths = getArtifactPaths(files);
-                Map<String, String> taskId = new HashMap<>();
-                SbomResultPO sbomResult = new SbomResultPO();
-                sbomResult.setResult("success");
-                sbomResult.setFiles(files);
-                sbomResult.setSbomPO(sbomPO);
-                for (String targetPath : targetPaths) {
-                    String artifactPath = targetPath;
-                    if (artifactPath.contains("/Packages")) {
-                        artifactPath = artifactPath.substring(0, artifactPath.indexOf("/Packages"))
-                            .replaceAll("//", "/");
-                    }
-                    Map<String, String> generateResult = sbomService.generateOpeneulerSbom(sbomPO, artifactPath);
-                    if (!"success".equals(generateResult.get("result"))) {
-                        sbomResult.setResult(generateResult.get("result"));
-                        sbomResult.setMessage(generateResult.get("errorInfo"));
-                        sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
-                        return;
-                    }
-                    String productName = artifactPath;
-                    if (productName.contains("/update/")) {
-                        // 更新文件夹
-                        productName = productName.substring(productName.indexOf("/repo/openeuler") + 15);
-                    } else if (productName.endsWith(".iso")) {
-                        // 镜像文件   注：目前不涉及
-                        productName = productName.substring(productName.lastIndexOf("/") + 1);
-                    }
-                    Map<String, String> publishResult = sbomService.publishSbomFile(sbomPO,
-                        generateResult.get("sbomContent"), productName);
-                    if (!"success".equals(publishResult.get("result"))) {
-                        if (publishResult.get("errorInfo").contains("has sbom import job in running")) {
-                            // 发布任务正在进行中
-                            return;
-                        }
-                        sbomResult.setResult(publishResult.get("result"));
-                        sbomResult.setMessage(publishResult.get("errorInfo"));
-                        sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
-                        return;
-                    }
-                    taskId.put(targetPath, publishResult.get("taskId"));
+    public void sbomResultAsync(SbomPO sbomObject, List<FilePO> files) {
+        publishTaskExecutor.execute(() -> {
+            Set<String> targetPaths = getArtifactPaths(files);
+            Map<String, String> taskId = new HashMap<>(16);
+            SbomResultPO sbomResult = new SbomResultPO();
+            sbomResult.setResult("success");
+            sbomResult.setFiles(files);
+            sbomResult.setSbomPO(sbomObject);
+            for (String targetPath : targetPaths) {
+                String artifactPath = targetPath;
+                if (artifactPath.contains("/Packages")) {
+                    artifactPath = artifactPath.substring(0, artifactPath.indexOf("/Packages"))
+                        .replaceAll("//", "/");
                 }
-                sbomResult.setTaskId(taskId);
-                sbomResultMap.put(sbomPO.getPublishId(), sbomResult);
+                Map<String, String> generateResult = sbomService.generateOpeneulerSbom(sbomObject, artifactPath);
+                if (!"success".equals(generateResult.get("result"))) {
+                    sbomResult.setResult(generateResult.get("result"));
+                    sbomResult.setMessage(generateResult.get("errorInfo"));
+                    sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+                    return;
+                }
+                String productName = artifactPath;
+                if (productName.contains("/update/")) {
+                    // 更新文件夹
+                    productName = productName.substring(productName.indexOf("/repo/openeuler") + 15);
+                } else if (productName.endsWith(".iso")) {
+                    // 镜像文件   注：目前不涉及
+                    productName = productName.substring(productName.lastIndexOf("/") + 1);
+                }
+                Map<String, String> publishResult = sbomService.publishSbomFile(sbomObject,
+                    generateResult.get("sbomContent"), productName);
+                if (!"success".equals(publishResult.get("result"))) {
+                    if (publishResult.get("errorInfo").contains("has sbom import job in running")) {
+                        // 发布任务正在进行中
+                        return;
+                    }
+                    sbomResult.setResult(publishResult.get("result"));
+                    sbomResult.setMessage(publishResult.get("errorInfo"));
+                    sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+                    return;
+                }
+                taskId.put(targetPath, publishResult.get("taskId"));
             }
-        }).start();
+            sbomResult.setTaskId(taskId);
+            sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+        });
     }
 
     /**
@@ -299,7 +305,7 @@ public class PublishVerifyController {
             fos.write(bytes);
             String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                 + remoteRepoIp + " \"[ -d " + archivePath + " ]  &&  echo exists || echo does not exist\"");
-            if (!"exists".equals(folderExistsFlag)) {
+            if (!AppConst.EXISTS.equals(folderExistsFlag)) {
                 verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                     + remoteRepoIp + " \"mkdir -p " + archivePath + "\"");
             }
@@ -343,12 +349,12 @@ public class PublishVerifyController {
                 return fileName + " checksum check failed.";
             }
         }
-        if ("asc".equals(file.getVerifyType())) {
+        if (AppConst.VERIFY_TYPE_ASC.equals(file.getVerifyType())) {
             if (!verifyService.fileVerify(tempDirPath + fileName)) {
                 return fileName + " digests signatures not OK.";
             }
         }
-        if ("rpm".equals(file.getVerifyType())) {
+        if (AppConst.VERIFY_TYPE_RPM.equals(file.getVerifyType())) {
             if (!verifyService.rpmVerify(tempDirPath + fileName)) {
                 return fileName + " digests signatures not OK.";
             }
@@ -356,21 +362,21 @@ public class PublishVerifyController {
         return "";
     }
 
-    private String validate(PublishPO publishPO) {
-        if (StringUtils.isEmpty(publishPO.getGpgKeyUrl())) {
+    private String validate(PublishPO publishObject) {
+        if (StringUtils.isEmpty(publishObject.getGpgKeyUrl())) {
             return "key url cannot be blank.";
         }
 
-        if (CollectionUtils.isEmpty(publishPO.getFiles())) {
+        if (CollectionUtils.isEmpty(publishObject.getFiles())) {
             return "files cannot be empty.";
         }
 
-        for (FilePO file : publishPO.getFiles()) {
+        for (FilePO file : publishObject.getFiles()) {
             if (StringUtils.isEmpty(file.getTargetPath())) {
                 return "file target path can not be empty.";
             }
-            File targetFile = new File(file.getTargetPath() + "/" + file.getName());
-            if ("error".equals(publishPO.getConflict()) && targetFile.exists()) {
+            File targetFile = new File(file.getTargetPath() + AppConst.SLASH + file.getName());
+            if ("error".equals(publishObject.getConflict()) && targetFile.exists()) {
                 return file.getName() + " already published.";
             }
         }
@@ -378,7 +384,7 @@ public class PublishVerifyController {
     }
 
     private String getTempDirPath(String tempDir) {
-        if (tempDir.startsWith("/")) {
+        if (tempDir.startsWith(AppConst.SLASH)) {
             return "/var/log" + tempDir;
         } else {
             return "/var/log/" + tempDir;
