@@ -11,6 +11,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 /**
  * @author chentao
@@ -20,7 +21,7 @@ public class SignInterceptor implements HandlerInterceptor {
     private static final Logger log = LoggerFactory.getLogger(SignInterceptor.class);
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
         boolean handleResult = false;
         String accessToken =request.getHeader(AppConst.ACCESS_TOKEN);
         String environmentVariable = System.getenv(AppConst.ACCESS_TOKEN);
@@ -29,6 +30,7 @@ public class SignInterceptor implements HandlerInterceptor {
         }
         if (!handleResult) {
             log.error("Signature authentication failed");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Signature authentication failed");
         }
         return handleResult;
     }
