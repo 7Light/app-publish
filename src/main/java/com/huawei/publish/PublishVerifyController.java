@@ -125,6 +125,8 @@ public class PublishVerifyController {
                 // 发布
                 if (isVerifySuccess) {
                     publishFile(fileList, fileTempDirPath, publishObject, result, exists);
+                } else {
+                    result.setResult("fail");
                 }
                 verifyService.execCmd("rm -rf " + fileTempDirPath);
             }
