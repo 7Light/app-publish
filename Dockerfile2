@@ -1,4 +1,5 @@
-FROM swr.cn-north-4.myhuaweicloud.com/opensourceway/mindspore/mindspore-repo-post-verify-base:v1.0.20230324170334
+# ubuntu:xenial该基础镜像会被Dockerfile构建出的镜像替换，由jenkins上填写构建出的镜像名替换
+FROM ubuntu:xenial
 
 # Set env
 USER root
