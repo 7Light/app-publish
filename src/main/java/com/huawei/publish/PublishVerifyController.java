@@ -1,6 +1,7 @@
 package com.huawei.publish;
 
 import com.alibaba.fastjson.JSONObject;
+import com.huawei.publish.enums.AppConst;
 import com.huawei.publish.model.FileFromRepoModel;
 import com.huawei.publish.model.FilePO;
 import com.huawei.publish.model.PublishPO;
@@ -10,6 +11,7 @@ import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.ObsUtil;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
+import com.huawei.publish.utils.CacheUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -38,11 +41,10 @@ import java.util.UUID;
 @RequestMapping(path = "/publish")
 @RestController
 public class PublishVerifyController {
-    private static Map<String, PublishResult> publishResultMap = new HashMap<>();
-    private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
-    private static Map<String, Map<String, String>> sbomTaskIdMap = new HashMap<>();
     private static final Logger log = Logger.getLogger(PublishVerifyController.class);
+
     private VerifyService verifyService;
+
     private static ObsUtil obsUtil = new ObsUtil();
 
     @Autowired
@@ -150,14 +152,22 @@ public class PublishVerifyController {
     public String publishAsync(@RequestBody PublishPO publishObject) {
         publishTaskExecutor.execute(() -> {
             PublishResult publishResult = publish(publishObject);
-            publishResultMap.put(publishObject.getPublishId(), publishResult);
+            CacheUtil.put(publishObject.getPublishId(), publishResult);
         });
         return "Start publish task success.";
     }
 
     @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
     public PublishResult getPublishResult(@RequestParam(value = "publishId") String publishId) {
-        return publishResultMap.get(publishId);
+        if (Objects.isNull(CacheUtil.get(publishId))) {
+            return new PublishResult();
+        }
+        PublishResult result = (PublishResult) CacheUtil.get(publishId);
+        if (!StringUtils.isEmpty(result.getResult())) {
+            // 发布成功后缓存5分钟过期
+            CacheUtil.setCacheExpiration(publishId, 60*5);
+        }
+        return result;
     }
 
     /**
@@ -175,14 +185,19 @@ public class PublishVerifyController {
             sbomResult.setResult("failed");
             return sbomResult;
         }
-        String publishId = sbomObject.getPublishId();
-        if (sbomResultMap.containsKey(publishId)) {
+        String sbomPublishId = AppConst.SBOM_PUBLISH_ID_PREFIX + sbomObject.getPublishId();
+        String sbomTaskId = AppConst.SBOM_TASK_ID_PREFIX + sbomObject.getPublishId();
+        if (CacheUtil.isContain(sbomPublishId)) {
             // 有sbom发布结果
-            sbomResult = sbomResultMap.get(publishId);
-            Map<String, String> taskId = sbomTaskIdMap.get(publishId);
+            sbomResult = (SbomResultPO) CacheUtil.get(sbomPublishId);
+            if (Objects.isNull(CacheUtil.get(sbomTaskId))) {
+                return sbomResult;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, String> taskId = (Map<String, String>) CacheUtil.get(sbomTaskId);
             sbomResult.setTaskId(taskId);
             String result = sbomResult.getResult();
-            if ("publishing".equals(result)) {
+            if (AppConst.PUBLISHING_TAG.equals(result)) {
                 return sbomResult;
             }
             // sbom发布成功的包查询sbom归档链接
@@ -213,7 +228,7 @@ public class PublishVerifyController {
             } else {
                 sbomResult.setResult("partial success");
             }
-            sbomResultMap.put(publishId, sbomResult);
+            CacheUtil.put(sbomPublishId, sbomResult);
             // sbom发布失败的包再次尝试发布
             if (CollectionUtils.isEmpty(taskId) || !sbomResult.isPublishSuccess()) {
                 PublishResult publishResult = JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
@@ -225,14 +240,21 @@ public class PublishVerifyController {
             sbomResult.setResult("publishing");
             // 初始化taskId
             Map<String, String> taskId = new HashMap<>();
-            sbomTaskIdMap.put(publishId, taskId);
+            CacheUtil.put(sbomTaskId, taskId);
             sbomResult.setTaskId(taskId);
-            sbomResultMap.put(publishId, sbomResult);
+            CacheUtil.put(sbomPublishId, sbomResult);
             // 异步发布
             PublishResult publishResult = JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
             sbomResultAsync(sbomObject, publishResult.getFiles());
         }
-        return sbomResultMap.get(publishId);
+        SbomResultPO result = (SbomResultPO) CacheUtil.get(sbomPublishId);
+        if (AppConst.SUCCESS_TAG.equals(result.getResult())) {
+            // sbom发布成功后缓存5分钟过期
+            CacheUtil.setCacheExpiration(sbomPublishId, 60*5);
+            // taskId缓存过期
+            CacheUtil.setCacheExpiration(sbomTaskId, 60*5);
+        }
+        return result;
     }
 
     private String validateSbom(SbomPO sbomObject) {
@@ -260,7 +282,9 @@ public class PublishVerifyController {
     public void sbomResultAsync(SbomPO sbomObject, List<FilePO> files) {
         publishTaskExecutor.execute(() -> {
                 SbomResultPO sbomResult = new SbomResultPO();
-                Map<String, String> taskId = sbomTaskIdMap.get(sbomObject.getPublishId());
+                @SuppressWarnings("unchecked")
+                Map<String, String> taskId =
+                    (Map<String, String>) CacheUtil.get(AppConst.SBOM_TASK_ID_PREFIX + sbomObject.getPublishId());
                 boolean flag = false;
                 for (FilePO file : files) {
                     // 不做sbom发布的文件
@@ -304,7 +328,7 @@ public class PublishVerifyController {
                 sbomResult.setPublishSuccess(!flag);
                 sbomResult.setFiles(files);
                 sbomResult.setSbomPO(sbomObject);
-                sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+            CacheUtil.put(AppConst.SBOM_PUBLISH_ID_PREFIX + sbomObject.getPublishId(), sbomResult);
             });
     }
 

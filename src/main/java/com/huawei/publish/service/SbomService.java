@@ -25,36 +25,36 @@ public class SbomService {
     /**
      * SBOM发布接口
      *
-     * @param sbomPO      参数
+     * @param sbomObject      参数
      * @param sbomContent SBOM文本内容
      * @return Map SBOM发布结果
      */
-    public Map<String, String> publishSbomFile(SbomPO sbomPO, String sbomContent, String productName) {
+    public Map<String, String> publishSbomFile(SbomPO sbomObject, String sbomContent, String productName) {
         Map<String, String> paramMap = new HashMap<>();
         paramMap.put("productName", productName);
         paramMap.put("sbomContent", sbomContent);
         paramMap.put("sbomContentType", "sbom_tracer_data");
         //定义发送数据
         String paramJson = JSON.toJSONString(paramMap);
-        String responseContent = HttpRequestUtil.doPost(sbomPO.getPublishSbomUrl(), paramJson);
+        String responseContent = HttpRequestUtil.doPost(sbomObject.getPublishSbomUrl(), paramJson);
         Map<String, String> publishResultMap = new HashMap<>();
         publishResultMap.put("result", "publishing");
         if (StringUtils.isEmpty(responseContent)) {
             // 请求异常返回空值，检查服务是否通
-            publishResultMap.put("errorInfo", "发布请求异常：" + sbomPO.getPublishSbomUrl());
+            publishResultMap.put("errorInfo", "发布请求异常：" + sbomObject.getPublishSbomUrl());
             log.error("SBOM发布: " + publishResultMap.get("errorInfo"));
             return publishResultMap;
         }
         JSONObject object = JSONObject.parseObject(responseContent);
         if (object.getObject("success", Boolean.class) == null) {
-            publishResultMap.put("errorInfo", "发布请求异常：" + sbomPO.getPublishSbomUrl());
+            publishResultMap.put("errorInfo", "发布请求异常：" + sbomObject.getPublishSbomUrl());
             log.error("SBOM发布: " + publishResultMap.get("errorInfo"));
             return publishResultMap;
         }
         if (!object.getObject("success", Boolean.class)) {
             publishResultMap.put("errorInfo", "SBOM发布: " + object.getObject("errorInfo", String.class));
             log.error("SBOM发布: errorInfo = " + object.getObject("errorInfo", String.class) + "; url = "
-                + sbomPO.getPublishSbomUrl() + "; sbomContent = " + sbomContent.length() + "; productName = " + productName);
+                + sbomObject.getPublishSbomUrl() + "; sbomContent = " + sbomContent.length() + "; productName = " + productName);
             return publishResultMap;
         }
         publishResultMap.put("taskId", object.getObject("taskId", String.class));
