@@ -471,6 +471,10 @@ public class PublishVerifyController {
      * @throws InterruptedException  异常
      */
     private boolean verifySignature(List<FilePO> files, String fileTempDirPath) throws IOException, InterruptedException {
+        // 判断files是否为白名单文件
+        if (isWhiteListFile(files)) {
+            return true;
+        }
         if (!isMissing(files)) {
             return false;
         }
@@ -502,6 +506,21 @@ public class PublishVerifyController {
         sourceFile.setPublishResult("fail");
         sha256File.setPublishResult("fail");
         ascFile.setPublishResult("fail");
+        return false;
+    }
+
+    /**
+     * 判断文件是否为白名单文件，白名单文件不需要验签
+     *
+     * @param files 待检验文件
+     * @return boolean
+     */
+    private boolean isWhiteListFile(List<FilePO> files) {
+        if (files.size() < 3) {
+            FilePO sourceFile = files.get(0);
+            String fileName = sourceFile.getName();
+            return fileName.endsWith(".log");
+        }
         return false;
     }
 
