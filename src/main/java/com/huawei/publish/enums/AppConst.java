@@ -33,4 +33,14 @@ public class AppConst {
      * 斜杠
      */
     public static final String SLASH = "/";
+
+    /**
+     * SBOM发布id前缀，用于区分软件包发布id
+     */
+    public static final String SBOM_PUBLISH_ID_PREFIX = "sbom_publish_id_prefix_";
+
+    /**
+     * 正在发布中标签
+     */
+    public static final String SUCCESS_TAG = "success";
 }

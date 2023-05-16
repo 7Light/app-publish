@@ -12,6 +12,7 @@ import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.FileDownloadService;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
+import com.huawei.publish.utils.CacheUtil;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -45,8 +47,6 @@ import java.util.Set;
 @RestController
 public class PublishVerifyController {
     private static final Logger log = LoggerFactory.getLogger(PublishVerifyController.class);
-    private static Map<String, PublishResult> publishResult = new HashMap<>();
-    private static Map<String, SbomResultPO> sbomResultMap = new HashMap<>();
 
     @Autowired
     private FileDownloadService fileDownloadService;
@@ -163,20 +163,28 @@ public class PublishVerifyController {
     public String publishAsync(@RequestBody PublishPO publishObject) {
         publishTaskExecutor.execute(() -> {
             PublishResult publish = publish(publishObject);
-            publishResult.put(publishObject.getPublishId(), publish);
+            CacheUtil.put(publishObject.getPublishId(), publish);
         });
         return "Start publish task success.";
     }
 
     @RequestMapping(value = "/getPublishResult", method = RequestMethod.GET)
     public PublishResult getPublishResult(@RequestParam(value = "publishId", required = true) String publishId) {
-        return publishResult.get(publishId);
+        if (Objects.isNull(CacheUtil.get(publishId))) {
+            return new PublishResult();
+        }
+        PublishResult result = (PublishResult) CacheUtil.get(publishId);
+        if (!StringUtils.isEmpty(result.getResult()) && !AppConst.PUBLISHING.equals(result.getResult())) {
+            // 发布成功后缓存5分钟过期
+            CacheUtil.setCacheExpiration(publishId, 60*5);
+        }
+        return result;
     }
 
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
     public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomObject) {
-        String publishId = sbomObject.getPublishId();
-        SbomResultPO sbomResult = sbomResultMap.get(publishId);
+        String sbomPublishId = AppConst.SBOM_PUBLISH_ID_PREFIX + sbomObject.getPublishId();
+        SbomResultPO sbomResult = (SbomResultPO) CacheUtil.get(sbomPublishId);
         if (sbomResult != null) {
             if (sbomResult.getTaskId() == null) {
                 if (AppConst.PUBLISHING.equals(sbomResult.getResult())
@@ -198,7 +206,7 @@ public class PublishVerifyController {
                 sbomResult.setResult(queryResult.get("result"));
                 if (!"success".equals(queryResult.get("result"))) {
                     sbomResult.setMessage(queryResult.get("errorInfo"));
-                    sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+                    CacheUtil.put(sbomObject.getPublishId(), sbomResult);
                     return sbomResult;
                 }
                 sbomResult.setMessage("");
@@ -210,15 +218,20 @@ public class PublishVerifyController {
                 }
                 file.setSbomRef(sbomRefMap.get(file.getTargetPath()));
             }
-            sbomResultMap.put(publishId, sbomResult);
+            CacheUtil.put(sbomPublishId, sbomResult);
         } else {
             sbomResult = new SbomResultPO();
-            sbomResult.setResult("publishing");
-            sbomResultMap.put(publishId, sbomResult);
+            sbomResult.setResult(AppConst.PUBLISHING);
+            CacheUtil.put(sbomPublishId, sbomResult);
             PublishResult publishResult = JSONObject.parseObject(sbomObject.getPublishResultDetail(), PublishResult.class);
             sbomResultAsync(sbomObject, publishResult.getFiles());
         }
-        return sbomResultMap.get(publishId);
+        SbomResultPO result = (SbomResultPO) CacheUtil.get(sbomPublishId);
+        if (AppConst.SUCCESS_TAG.equals(result.getResult())) {
+            // sbom发布成功后缓存5分钟过期
+            CacheUtil.setCacheExpiration(sbomPublishId, 60*5);
+        }
+        return result;
     }
 
     public void sbomResultAsync(SbomPO sbomObject, List<FilePO> files) {
@@ -229,17 +242,19 @@ public class PublishVerifyController {
             sbomResult.setResult("success");
             sbomResult.setFiles(files);
             sbomResult.setSbomPO(sbomObject);
+            String sbomPublishId = AppConst.SBOM_PUBLISH_ID_PREFIX + sbomObject.getPublishId();
             for (String targetPath : targetPaths) {
                 String artifactPath = targetPath;
                 if (artifactPath.contains("/Packages")) {
                     artifactPath = artifactPath.substring(0, artifactPath.indexOf("/Packages"))
                         .replaceAll("//", "/");
                 }
+                // 第一步SBOM生成，获取sbomContent
                 Map<String, String> generateResult = sbomService.generateOpeneulerSbom(sbomObject, artifactPath);
                 if (!"success".equals(generateResult.get("result"))) {
                     sbomResult.setResult(generateResult.get("result"));
                     sbomResult.setMessage(generateResult.get("errorInfo"));
-                    sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+                    CacheUtil.put(sbomPublishId, sbomResult);
                     return;
                 }
                 String productName = artifactPath;
@@ -250,6 +265,7 @@ public class PublishVerifyController {
                     // 镜像文件   注：目前不涉及
                     productName = productName.substring(productName.lastIndexOf("/") + 1);
                 }
+                // 第二步SBOM生成，返回taskId
                 Map<String, String> publishResult = sbomService.publishSbomFile(sbomObject,
                     generateResult.get("sbomContent"), productName);
                 if (!"success".equals(publishResult.get("result"))) {
@@ -259,13 +275,13 @@ public class PublishVerifyController {
                     }
                     sbomResult.setResult(publishResult.get("result"));
                     sbomResult.setMessage(publishResult.get("errorInfo"));
-                    sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+                    CacheUtil.put(sbomPublishId, sbomResult);
                     return;
                 }
                 taskId.put(targetPath, publishResult.get("taskId"));
             }
             sbomResult.setTaskId(taskId);
-            sbomResultMap.put(sbomObject.getPublishId(), sbomResult);
+            CacheUtil.put(sbomPublishId, sbomResult);
         });
     }
 
