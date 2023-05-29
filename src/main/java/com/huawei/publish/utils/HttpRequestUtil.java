@@ -6,6 +6,7 @@ import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -25,6 +26,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class HttpRequestUtil {
     private static final Logger log = LoggerFactory.getLogger(HttpRequestUtil.class);
+
     /**
      * 发送HTTP_POST请求
      *
@@ -55,12 +57,16 @@ public class HttpRequestUtil {
         return responseContent;
     }
 
-
-
-    public static String doGet (String urlStr) {
+    /**
+     * 发送HTTP_GRT请求
+     *
+     * @param url 请求地址
+     * @return responseContent
+     */
+    public static String doGet (String url) {
         String responseContent  = null;
         //构造httpGet对象
-        HttpGet httpGet = new HttpGet(urlStr.trim());
+        HttpGet httpGet = new HttpGet(url.trim());
         try{
             CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
             //构造响应对象
@@ -75,6 +81,36 @@ public class HttpRequestUtil {
             log.error("post请求提交失败,异常信息:{}", e.getMessage());
         }finally {
             httpGet.releaseConnection();
+        }
+        return responseContent;
+    }
+
+    /**
+     * 发送HTTP_PUT请求
+     *
+     * @param url 请求地址
+     * @param paramJson 请求参数
+     * @return responseContent
+     */
+    public static String doPut(String url, String paramJson) {
+        String responseContent  = null;
+        // 创建Http Put请求
+        HttpPut httpPut = new HttpPut(url.trim());
+        httpPut.setProtocolVersion(HttpVersion.HTTP_1_0);
+        httpPut.setHeader(HTTP.CONTENT_TYPE, "application/json");
+        try  {
+            StringEntity entity = new StringEntity(paramJson,  StandardCharsets.UTF_8);
+            entity.setContentEncoding("UTF-8");
+            entity.setContentType("application/json");
+            httpPut.setEntity(entity);
+            // 执行http请求
+            CloseableHttpClient httpClient = HttpClients.createDefault();
+            CloseableHttpResponse response = httpClient.execute(httpPut);
+            responseContent = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.error("post请求提交失败,异常信息:{}", e.getMessage());
+        } finally {
+            httpPut.releaseConnection();
         }
         return responseContent;
     }

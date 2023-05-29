@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 
 /**
  * verify service
+ * @author chentao
  */
 public class VerifyService {
     private static final Logger log = LoggerFactory.getLogger(VerifyService.class);

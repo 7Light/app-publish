@@ -10,6 +10,7 @@ import com.huawei.publish.model.RepoIndex;
 import com.huawei.publish.model.SbomPO;
 import com.huawei.publish.model.SbomResultPO;
 import com.huawei.publish.service.FileDownloadService;
+import com.huawei.publish.service.GiteeUploaderService;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
 import com.huawei.publish.utils.CacheUtil;
@@ -27,14 +28,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -59,6 +56,9 @@ public class PublishVerifyController {
     @Autowired
     @Qualifier("publishTaskExecutor")
     private ThreadPoolTaskExecutor publishTaskExecutor;
+
+    @Autowired
+    private GiteeUploaderService giteeUploaderService;
 
     /**
      * heartbeat
@@ -294,57 +294,15 @@ public class PublishVerifyController {
     @RequestMapping(value = "/archiveBulletinAndReview", method = RequestMethod.POST)
     public String archiveBulletinAndReview(@RequestBody ArchiveInfoPO archiveInfo) {
         // 写出发布公告
-        String remoteRepoIp = archiveInfo.getRemoteRepoIp();
-        String bulletinName = archiveInfo.getVersionNum() + "_publishBulletin.html";
-        boolean bulletinResult = archiveFile(remoteRepoIp, archiveInfo.getBulletin(), bulletinName, archiveInfo.getBulletinArchivePath());
+        String bulletinName = archiveInfo.getBulletinArchivePath() + archiveInfo.getVersionNum() + "_publishBulletin.html";
+        boolean bulletinResult = giteeUploaderService.uploadFile2Gitee(archiveInfo, bulletinName, archiveInfo.getBulletin());
         // 写出发布详情
-        String reviewName = archiveInfo.getVersionNum() + "_reviewDetails.md";
-        boolean reviewResult = archiveFile(remoteRepoIp, archiveInfo.getReviewDetail(), reviewName, archiveInfo.getReviewArchivePath());
+        String reviewName = archiveInfo.getReviewArchivePath() + archiveInfo.getVersionNum() + "_reviewDetails.md";
+        boolean reviewResult = giteeUploaderService.uploadFile2Gitee(archiveInfo, reviewName, archiveInfo.getReviewDetail());
         if (bulletinResult && reviewResult) {
             return "success";
         }
-        return "fail";
-    }
-
-    private boolean archiveFile(String remoteRepoIp, byte[] bytes, String fileName, String archivePath) {
-        FileOutputStream fos = null;
-        try {
-            verifyService = new VerifyService();
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT);
-            String tempDirPath = "/var/log/app-publish/file/temp/" + dateFormat.format(new Date()) + "/";
-            File tempDir = new File(tempDirPath);
-            if (!tempDir.exists()) {
-                verifyService.execCmd("mkdir -p " + tempDirPath);
-            }
-            File bulletinFile = new File(tempDirPath + fileName);
-            fos = new FileOutputStream(bulletinFile);
-            fos.write(bytes);
-            String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                + remoteRepoIp + " \"[ -d " + archivePath + " ]  &&  echo exists || echo does not exist\"");
-            if (!AppConst.EXISTS.equals(folderExistsFlag)) {
-                verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                    + remoteRepoIp + " \"mkdir -p " + archivePath + "\"");
-            }
-            String bulletinOutPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " +
-                tempDirPath + fileName + " root@" + remoteRepoIp + ":" + archivePath + fileName);
-            if (!StringUtils.isEmpty(bulletinOutPut)) {
-                log.error(bulletinOutPut);
-                return false;
-            }
-            verifyService.execCmd("rm -rf " + tempDirPath);
-            return true;
-        } catch (IOException | InterruptedException e) {
-            log.error(e.getMessage());
-            return false;
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close();
-                } catch (IOException e) {
-                    log.error(e.getMessage());
-                }
-            }
-        }
+        return "failed";
     }
 
     private Set<String> getArtifactPaths(List<FilePO> files) {

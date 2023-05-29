@@ -44,8 +44,73 @@ public class ArchiveInfoPO {
      */
     private String archiveId;
 
+    /**
+     * 存储库的所有者或组织
+     */
+    private String owner;
+
+    /**
+     * 存储库的名称
+     */
+    private String repoName;
+
+    /**
+     * 文件在存储库中的路径
+     */
+    private String filePath;
+
+    /**
+     * 分支名称，用于指定要将文件添加到哪个分支中。
+     */
+    private String branch;
+
+    /**
+     *  Gitee 令牌，用于进行身份验证
+     */
+    private String giteeUploadAccessToken ;
+
+    public String getRepoName() {
+        return repoName;
+    }
+
+    public void setRepoName(String repoName) {
+        this.repoName = repoName;
+    }
+
     public String getVersionNum() {
         return versionNum;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+
+    public String getBranch() {
+        return branch;
+    }
+
+    public void setBranch(String branch) {
+        this.branch = branch;
+    }
+
+    public String getGiteeUploadAccessToken() {
+        return giteeUploadAccessToken;
+    }
+
+    public void setGiteeUploadAccessToken(String giteeUploadAccessToken) {
+        this.giteeUploadAccessToken = giteeUploadAccessToken;
     }
 
     public void setVersionNum(String versionNum) {
@@ -110,6 +175,11 @@ public class ArchiveInfoPO {
             ", bulletinArchivePath='" + bulletinArchivePath + '\'' +
             ", reviewArchivePath='" + reviewArchivePath + '\'' +
             ", archiveId='" + archiveId + '\'' +
+            ", owner='" + owner + '\'' +
+            ", repoName='" + repoName + '\'' +
+            ", filePath='" + filePath + '\'' +
+            ", branch='" + branch + '\'' +
+            ", giteeUploadAccessToken='" + giteeUploadAccessToken + '\'' +
             '}';
     }
 }
