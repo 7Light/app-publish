@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.huawei.publish.model.ArchiveInfoPO;
 import com.huawei.publish.utils.HttpRequestUtil;
+import com.huawei.publish.utils.SecurityUtil;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,9 @@ public class GiteeUploaderService {
         String owner = archiveInfo.getOwner();
         String repoName = archiveInfo.getRepoName();
         String accessToken = archiveInfo.getGiteeUploadAccessToken();
+        if (!StringUtils.isEmpty(accessToken)) {
+            accessToken = SecurityUtil.decrypt(accessToken);
+        }
         String branch = archiveInfo.getBranch();
         String getUrl = API_BASE_URL + "/repos/" + owner + "/" + repoName + "/contents/" + filePath +
             "?access_token=" + accessToken + "&ref=" + branch;
