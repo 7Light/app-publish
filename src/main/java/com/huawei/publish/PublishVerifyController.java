@@ -119,6 +119,8 @@ public class PublishVerifyController {
                 String authorization = publishObject.getAuthorization();
                 if ("yaml".equals(sourceFile.getVerifyType())) {
                     fileDownloadService.downloadHttpUrl(sourceFile.getUrl(), fileTempDirPath, sourceFile.getName(), authorization);
+                    // 病毒扫描
+                    verifyService.clamScan(fileTempDirPath+ "/" +sourceFile.getName());
                 } else {
                     isVerifySuccess = verifySignature(fileList, fileTempDirPath, authorization);
                 }
@@ -240,6 +242,8 @@ public class PublishVerifyController {
         fileTempDir.mkdir();
         for (FilePO file : files) {
             fileDownloadService.downloadHttpUrl(file.getUrl(), fileTempDirPath, file.getName(), authorization);
+            // 病毒扫描
+            verifyService.clamScan(fileTempDirPath + "/" + file.getName());
         }
         String verifyMessage = verify(fileTempDirPath, sourceFile, sha256File, ascFile);
         if (StringUtils.isEmpty(verifyMessage)) {

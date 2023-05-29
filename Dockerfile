@@ -8,6 +8,7 @@ ENV USER root
 RUN yum -y update \
      && yum install -y wget \
      && yum install -y git \
-         && yum install -y maven
+         && yum install -y maven \
+     && yum install -y clamav clamav-update
 
 
