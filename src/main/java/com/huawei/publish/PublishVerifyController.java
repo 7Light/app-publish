@@ -119,8 +119,6 @@ public class PublishVerifyController {
                 String authorization = publishObject.getAuthorization();
                 if ("yaml".equals(sourceFile.getVerifyType())) {
                     fileDownloadService.downloadHttpUrl(sourceFile.getUrl(), fileTempDirPath, sourceFile.getName(), authorization);
-                    // 病毒扫描
-                    verifyService.clamScan(fileTempDirPath+ "/" +sourceFile.getName());
                 } else {
                     isVerifySuccess = verifySignature(fileList, fileTempDirPath, authorization);
                 }
@@ -242,8 +240,6 @@ public class PublishVerifyController {
         fileTempDir.mkdir();
         for (FilePO file : files) {
             fileDownloadService.downloadHttpUrl(file.getUrl(), fileTempDirPath, file.getName(), authorization);
-            // 病毒扫描
-            verifyService.clamScan(fileTempDirPath + "/" + file.getName());
         }
         String verifyMessage = verify(fileTempDirPath, sourceFile, sha256File, ascFile);
         if (StringUtils.isEmpty(verifyMessage)) {
@@ -353,6 +349,16 @@ public class PublishVerifyController {
                     file.setPublishResult("normal");
                 }
                 String fileName = file.getName();
+                // 病毒扫描
+                boolean clamScanResult = verifyService.clamScan(fileTempDirPath + "/" + fileName);
+                if (clamScanResult) {
+                    file.setScanResult("success");
+                } else {
+                    file.setPublishResult("fail");
+                    result.setResult("fail");
+                    file.setScanResult("fail");
+                    return;
+                }
                 boolean uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
                     + fileName + " " + publish.getObsUrl() + (targetPath + "/" + file.getName())
                     .replace("//", "/"), "Upload successfully");

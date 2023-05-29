@@ -112,12 +112,14 @@ public class VerifyService {
      *
      * @param filePath 扫描路径
      */
-    public void clamScan(String filePath) {
+    public boolean clamScan(String filePath) {
         try {
             String ret = execCmd("clamscan " + filePath);
             log.info(ret);
+            return ret.contains(filePath + ": OK");
         } catch (Exception e) {
             log.error("clamScan verify error,file:" + filePath + " error:" + e.getMessage());
+            return false;
         }
     }
 
