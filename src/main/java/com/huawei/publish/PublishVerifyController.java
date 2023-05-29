@@ -356,7 +356,7 @@ public class PublishVerifyController {
                 } else {
                     file.setPublishResult("fail");
                     result.setResult("fail");
-                    file.setScanResult("fail");
+                    file.setScanResult("is infected");
                     return;
                 }
                 boolean uploadSuccess = verifyService.execCmdAndContainsMessage("obsutil cp " + fileTempDirPath
