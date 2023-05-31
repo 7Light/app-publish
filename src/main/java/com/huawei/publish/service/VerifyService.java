@@ -108,6 +108,21 @@ public class VerifyService {
         return false;
     }
 
+    /**
+     * clamAv病毒扫描
+     *
+     * @param filePath 扫描路径
+     */
+    public boolean clamScan(String filePath) {
+        try {
+            String ret = execCmd("clamscan " + filePath);
+            return ret.contains(": OK") && !ret.contains("FOUND");
+        } catch (Exception e) {
+            log.error("clamScan verify error,file:" + filePath + " error:" + e.getMessage());
+            return false;
+        }
+    }
+
     private String getExecOutput(Process exec) {
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(exec.getInputStream()));
         BufferedReader bufferedReader2 = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
@@ -123,6 +138,6 @@ public class VerifyService {
         } catch (IOException e) {
             log.error(e.getMessage());
         }
-        return sb + "";
+        return String.valueOf(sb);
     }
 }

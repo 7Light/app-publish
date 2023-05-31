@@ -126,6 +126,16 @@ public class PublishVerifyController {
                     && !sourceFile.getParentDir().contains("latest/docs/")) {
                     isSuccess = verifySignature(files, fileTempDirPath);
                 }
+                // clamAv扫描病毒
+                for (FilePO file : files) {
+                    boolean clamScanResult =
+                        verifyService.clamScan(fileTempDirPath + file.getName());
+                    if (clamScanResult) {
+                        file.setScanResult("success");
+                    } else {
+                        file.setScanResult("is infected");
+                    }
+                }
                 // 发布
                 if (isSuccess) {
                     if ("obs".equals(publishObject.getUploadType())) {
