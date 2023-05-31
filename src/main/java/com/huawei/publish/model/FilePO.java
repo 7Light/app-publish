@@ -13,6 +13,7 @@ public class FilePO {
     private String publishResult;
     private String verifyResult;
     private String sbomRef;
+    private String scanResult;
 
     public String getSbomRef() {
         return sbomRef;
@@ -96,5 +97,13 @@ public class FilePO {
 
     public void setSha256(String sha256) {
         this.sha256 = sha256;
+    }
+
+    public String getScanResult() {
+        return scanResult;
+    }
+
+    public void setScanResult(String scanResult) {
+        this.scanResult = scanResult;
     }
 }

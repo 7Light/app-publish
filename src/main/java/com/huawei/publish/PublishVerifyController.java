@@ -120,6 +120,16 @@ public class PublishVerifyController {
                 if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith(AppConst.SLASH)) {
                     tempDirPath = tempDirPath + AppConst.SLASH;
                 }
+                // clamAv扫描病毒
+                boolean clamScanResult = verifyService.clamScan(tempDirPath + fileName);
+                if (clamScanResult) {
+                    file.setScanResult("success");
+                } else {
+                    file.setScanResult("is infected");
+                    file.setPublishResult("failed");
+                    result.setResult("fail");
+                    continue;
+                }
                 String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                     + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
                 if (!AppConst.EXISTS.equals(folderExistsFlag)) {

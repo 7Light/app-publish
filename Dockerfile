@@ -10,7 +10,8 @@ RUN yum -y update \
      && yum install -y git \
          && yum install -y rpm \
          && yum install -y maven \
-         && yum install -y createrepo
+         && yum install -y createrepo \
+         && yum install -y clamav clamav-update
 
 
  # install java
@@ -28,6 +29,22 @@ ENV UPDATE_KEY=""
 RUN git clone -b open-euler https://github.com/7Light/app-publish.git
 WORKDIR /app-publish
 RUN mvn clean install -s settings.xml
+
+# clamAv
+RUN touch /etc/clamd.d/scan.conf
+RUN chmod 755 /etc/clamd.d/scan.conf
+RUN echo 'LogFile /var/log/clamav/scan.log' >> /etc/clamd.d/scan.conf
+RUN echo 'LogFileMaxSize 0' >> /etc/clamd.d/scan.conf
+RUN echo 'LogTime yes' >> /etc/clamd.d/scan.conf
+RUN echo 'LogSyslog yes' >> /etc/clamd.d/scan.conf
+RUN echo 'DatabaseDirectory /var/lib/clamav' >> /etc/clamd.d/scan.conf
+RUN echo 'ScanArchive yes' >> /etc/clamd.d/scan.conf
+RUN echo 'MaxFileSize 200M' >> /etc/clamd.d/scan.conf
+RUN echo 'MaxRecursion 16' >> /etc/clamd.d/scan.conf
+RUN echo 'MaxFiles 10000' >> /etc/clamd.d/scan.conf
+RUN echo 'MaxEmbeddedPE 10M' >> /etc/clamd.d/scan.conf
+RUN echo 'MaxHTMLNormalize 10M' >> /etc/clamd.d/scan.conf
+RUN freshclam
 
 #
 WORKDIR /usr/local
