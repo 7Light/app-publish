@@ -7,7 +7,7 @@ public class AppConst {
     /**
      * access_token
      */
-    public static final String ACCESS_TOKEN = "access_token";
+    public static final String ACCESS_TOKEN = "accessToken";
 
     /**
      * SBOM发布id前缀，用于区分软件包发布id
