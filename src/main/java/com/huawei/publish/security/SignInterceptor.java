@@ -24,7 +24,6 @@ public class SignInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
         boolean handleResult = false;
         String accessToken =request.getHeader(AppConst.ACCESS_TOKEN);
-        log.info("accessToken: " + accessToken);
         String environmentVariable = System.getenv(AppConst.ACCESS_TOKEN);
         if (StringUtils.isNotBlank(accessToken) && StringUtils.isNotBlank(environmentVariable)) {
            handleResult = SecurityUtil.decrypt(environmentVariable).equals(SecurityUtil.decrypt(accessToken));
