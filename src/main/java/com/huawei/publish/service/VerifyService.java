@@ -9,9 +9,10 @@ import java.io.InputStreamReader;
 
 /**
  * verify service
+ * @author xiongfengbo
  */
 public class VerifyService {
-    private static Logger log = Logger.getLogger(VerifyService.class);
+    private static final Logger log = Logger.getLogger(VerifyService.class);
     private String gpgKeyUrl;
     private String keyFileName;
     private String rpmKey;
@@ -24,18 +25,18 @@ public class VerifyService {
         this.fileKey = fileKey;
     }
 
-    public VerifyService(PublishPO publishPO) {
-        this.gpgKeyUrl = publishPO.getGpgKeyUrl();
-        this.keyFileName = publishPO.getKeyFileName();
-        this.rpmKey = publishPO.getRpmKey();
-        this.fileKey = publishPO.getFileKey();
+    public VerifyService(PublishPO publishObject) {
+        this.gpgKeyUrl = publishObject.getGpgKeyUrl();
+        this.keyFileName = publishObject.getKeyFileName();
+        this.rpmKey = publishObject.getRpmKey();
+        this.fileKey = publishObject.getFileKey();
     }
 
     /**
      * @param cmd cmd
      * @return output
-     * @throws IOException
-     * @throws InterruptedException
+     * @throws IOException 异常
+     * @throws InterruptedException 异常
      */
     public String execCmd(String cmd) throws IOException, InterruptedException {
         log.info("cmd:" + cmd);
@@ -72,7 +73,7 @@ public class VerifyService {
      *
      * @param filePath file path
      * @param sha256   sha256
-     * @return
+     * @return boolean
      */
     public boolean checksum256Verify(String filePath, String sha256) {
         try {

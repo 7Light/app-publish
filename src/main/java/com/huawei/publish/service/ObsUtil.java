@@ -23,44 +23,45 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * @author xiongfengbo
+ */
 public class ObsUtil {
-    private static Logger log = Logger.getLogger(ObsUtil.class);
-    private static final String endPoint = System.getenv("endPoint");
-    private static final String ak = System.getenv("ak");
-    private static final String sk = System.getenv("sk");
+    private static final Logger log = Logger.getLogger(ObsUtil.class);
+    private static final String END_POINT = System.getenv("endPoint");
+    private static final String AK = System.getenv("ak");
+    private static final String SK = System.getenv("sk");
     private ObsConfiguration config;
-    private static String bucketName = System.getenv("bucketName");
+    private static final String BUCKET_NAME = System.getenv("bucketName");
 
     public ObsUtil() {
         config = new ObsConfiguration();
         config.setSocketTimeout(30000);
         config.setConnectionTimeout(10000);
-        config.setEndPoint(endPoint);
+        config.setEndPoint(END_POINT);
     }
 
     public boolean copyObject(String sourceObjectKey, String destObjectKey) {
-        ObsClient obsClient = new ObsClient(ak, sk, config);
+        ObsClient obsClient = new ObsClient(AK, SK, config);
         try {
-            obsClient.copyObject(bucketName, sourceObjectKey, bucketName, destObjectKey);
+            obsClient.copyObject(BUCKET_NAME, sourceObjectKey, BUCKET_NAME, destObjectKey);
             return true;
         } catch (ObsException e) {
             log.error(e.getErrorMessage());
             return false;
         } finally {
-            if (obsClient != null) {
-                try {
-                    obsClient.close();
-                } catch (IOException e) {
-                    log.error("", e);
-                }
+            try {
+                obsClient.close();
+            } catch (IOException e) {
+                log.error("", e);
             }
         }
     }
 
     public List<FileFromRepoModel> listObjects(String path) {
-        ObsClient obsClient = new ObsClient(ak, sk, config);
+        ObsClient obsClient = new ObsClient(AK, SK, config);
         try {
-            ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucketName);
+            ListObjectsRequest listObjectsRequest = new ListObjectsRequest(BUCKET_NAME);
             listObjectsRequest.setPrefix(path);
             ObjectListing objectListing = obsClient.listObjects(listObjectsRequest);
             List<FileFromRepoModel> result = new ArrayList<>();
@@ -90,26 +91,24 @@ public class ObsUtil {
             log.error(e.getErrorMessage());
             return null;
         } finally {
-            if (obsClient != null) {
-                try {
-                    obsClient.close();
-                } catch (IOException e) {
-                    log.error("", e);
-                }
+            try {
+                obsClient.close();
+            } catch (IOException e) {
+                log.error("", e);
             }
         }
     }
 
     public void downFile(String obsFullPath, String localFullPath) {
-        ObsClient obsClient = new ObsClient(ak, sk, config);
+        ObsClient obsClient = new ObsClient(AK, SK, config);
         try {
-            DownloadFileRequest request = new DownloadFileRequest(bucketName, obsFullPath);
+            DownloadFileRequest request = new DownloadFileRequest(BUCKET_NAME, obsFullPath);
             // Set the local path to which the object is downloaded.
             request.setDownloadFile(localFullPath);
             // Set the maximum number of parts that can be concurrently downloaded.
             request.setTaskNum(5);
             // Set the part size to 1 MB.
-            request.setPartSize(1 * 1024 * 1024);
+            request.setPartSize(1024 * 1024);
             // Enable resumable upload.
             request.setEnableCheckpoint(true);
             // Trigger the listener callback every 100 KB.
@@ -137,31 +136,26 @@ public class ObsUtil {
         } catch (InterruptedException e) {
             log.error(e.getMessage());
         } finally {
-            if (obsClient != null) {
-                try {
-                    obsClient.close();
-                } catch (IOException e) {
-                    log.error("", e);
-                }
+            try {
+                obsClient.close();
+            } catch (IOException e) {
+                log.error("", e);
             }
         }
     }
 
     public boolean isExist(String objectName) {
-        ObsClient obsClient = new ObsClient(ak, sk, config);
+        ObsClient obsClient = new ObsClient(AK, SK, config);
         try {
-            boolean exist = obsClient.doesObjectExist(bucketName, objectName);
-            return exist;
+            return obsClient.doesObjectExist(BUCKET_NAME, objectName);
         } catch (ObsException e) {
             log.error(e.getErrorMessage());
             return false;
         } finally {
-            if (obsClient != null) {
-                try {
-                    obsClient.close();
-                } catch (IOException e) {
-                    log.error("", e);
-                }
+            try {
+                obsClient.close();
+            } catch (IOException e) {
+                log.error("", e);
             }
         }
     }
@@ -191,12 +185,12 @@ public class ObsUtil {
      * @return String
      */
     public String getSbomContent(String objectName) {
-        ObsClient obsClient = new ObsClient(ak, sk, config);
+        ObsClient obsClient = new ObsClient(AK, SK, config);
         InputStream is = null;
         ByteArrayOutputStream bos = null;
         byte[] bytes = null;
         try {
-            ObsObject obsObject = obsClient.getObject(bucketName, objectName);
+            ObsObject obsObject = obsClient.getObject(BUCKET_NAME, objectName);
             is = obsObject.getObjectContent();
             bos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
@@ -222,12 +216,10 @@ public class ObsUtil {
                     log.error(e.getMessage());
                 }
             }
-            if (obsClient != null) {
-                try {
-                    obsClient.close();
-                } catch (IOException e) {
-                    log.error("", e);
-                }
+            try {
+                obsClient.close();
+            } catch (IOException e) {
+                log.error("", e);
             }
         }
         return new String(Base64.getEncoder().encode(bytes));

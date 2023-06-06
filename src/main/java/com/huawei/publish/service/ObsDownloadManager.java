@@ -8,6 +8,9 @@ import com.obs.services.model.MonitorableProgressListener;
 
 import java.util.Date;
 
+/**
+ * @author xiongfengbo
+ */
 public class ObsDownloadManager {
     private DownloadFileRequest request;
     private ObsClient obsClient;
@@ -50,7 +53,7 @@ public class ObsDownloadManager {
     /**
      * Pause a task.
      *
-     * @throws InterruptedException
+     * @throws InterruptedException 异常
      */
     public void pause() throws InterruptedException {
         // Interrupt the thread to simulate the suspension of the download task.
@@ -65,7 +68,7 @@ public class ObsDownloadManager {
     /**
      * Wait until the download task is complete.
      *
-     * @throws InterruptedException
+     * @throws InterruptedException 异常
      */
     public void waitingFinish() throws InterruptedException {
         this.currentThread.join();
