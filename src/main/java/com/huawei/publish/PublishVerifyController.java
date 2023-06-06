@@ -60,9 +60,8 @@ public class PublishVerifyController {
      */
     @RequestMapping(value = "/heartbeat", method = RequestMethod.GET)
     public Map<String, Object> heartbeat() {
-        Map<String, Object> result = new HashMap<>(1);
+        Map<String, Object> result = new HashMap<>(2);
         result.put("result", "success");
-        log.info("heartbeat");
         return result;
     }
 
