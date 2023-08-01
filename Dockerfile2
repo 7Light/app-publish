@@ -49,7 +49,7 @@ RUN git clone  https://${RASP_USER_NAME}:${RASP_PASSWORD}@github.com/Open-Infra-
 WORKDIR /plugins/armorrasp/
 RUN tar -xzvf rasp.tgz -C /usr/local/
 RUN remove -r /usr/local/plugins/
-RUN chmod 755 -R rasp
+RUN chmod 755 -R /usr/local/rasp/
 
 WORKDIR /usr/local
 RUN touch entrypoint.sh
