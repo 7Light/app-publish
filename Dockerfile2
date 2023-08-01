@@ -44,13 +44,16 @@ RUN echo 'MaxEmbeddedPE 10M' >> /etc/clamd.d/scan.conf
 RUN echo 'MaxHTMLNormalize 10M' >> /etc/clamd.d/scan.conf
 RUN freshclam
 
+
+
 # install rasp.tgz
+WORKDIR /usr/local/
 ARG RASP_USER_NAME
 ARG RASP_PASSWORD
 RUN git clone  https://${RASP_USER_NAME}:${RASP_PASSWORD}@github.com/Open-Infra-Ops/plugins.git
 WORKDIR /plugins/armorrasp/
 RUN tar -xzvf rasp.tgz -C /usr/local/
-RUN remove -r /plugins/
+RUN remove -r /usr/local/plugins/
 RUN chmod 755 -R rasp
 
 WORKDIR /usr/local
