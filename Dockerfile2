@@ -44,11 +44,20 @@ RUN echo 'MaxEmbeddedPE 10M' >> /etc/clamd.d/scan.conf
 RUN echo 'MaxHTMLNormalize 10M' >> /etc/clamd.d/scan.conf
 RUN freshclam
 
+# install rasp.tgz
+ARG RASP_USER_NAME
+ARG RASP_PASSWORD
+RUN git clone  https://${RASP_USER_NAME}:${RASP_PASSWORD}@github.com/Open-Infra-Ops/plugins.git
+WORKDIR /plugins/armorrasp/
+RUN tar -xzvf rasp.tgz -C /usr/local/
+RUN remove -r /plugins/
+RUN chmod 755 -R rasp
+
 WORKDIR /usr/local
 RUN touch entrypoint.sh
 RUN echo '#!/bin/bash' >> /usr/local/entrypoint.sh
 RUN sed -i -e "1a/usr/local/obsutil/obsutil_linux_amd64/obsutil config -i=\$ak -k=\$sk -e=\$endpoint" /usr/local/entrypoint.sh
-RUN sed -i -e "2ajava -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" /usr/local/entrypoint.sh
+RUN sed -i -e "2ajava -javaagent:/usr/local/rasp/rasp.jar -jar /root/.m2/repository/com/huawei/app-publish/1.0/app-publish-1.0.jar" /usr/local/entrypoint.sh
 RUN chmod u+x /usr/local/entrypoint.sh
 ENTRYPOINT ["/usr/local/entrypoint.sh"]
 
