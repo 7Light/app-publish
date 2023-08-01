@@ -48,7 +48,7 @@ ARG RASP_PASSWORD
 RUN git clone  https://${RASP_USER_NAME}:${RASP_PASSWORD}@github.com/Open-Infra-Ops/plugins.git
 WORKDIR plugins/armorrasp/
 RUN tar -xzvf rasp.tgz -C /usr/local/
-RUN remove -r /usr/local/plugins/
+RUN rm -r /usr/local/plugins/
 RUN chmod 755 -R /usr/local/rasp/
 
 WORKDIR /usr/local
