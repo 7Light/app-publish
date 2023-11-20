@@ -23,7 +23,7 @@ ENV JAVA_HOME /usr/local/java/jdk
 ENV JRE_HOME ${JAVA_HOME}/jre
 ENV CLASSPATH .:${JAVA_HOME}/lib:${JRE_HOME}/lib
 ENV PATH ${JAVA_HOME}/bin:$PATH
-ENV UPDATE_KEY=""
+
 
 # app-publish
 RUN git clone -b open-euler https://github.com/7Light/app-publish.git
