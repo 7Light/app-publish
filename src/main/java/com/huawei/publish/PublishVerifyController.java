@@ -322,6 +322,10 @@ public class PublishVerifyController {
             if (file.getTargetPath().contains("/source/")) {
                 continue;
             }
+            // 已发布过的包
+            if ("skip".equals(file.getPublishResult())) {
+                continue;
+            }
             set.add(file.getTargetPath());
         }
         return set;
