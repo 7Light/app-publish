@@ -109,6 +109,7 @@ public class VerifyService {
     public boolean clamScan(String filePath) {
         try {
             String ret = execCmd("clamscan " + filePath);
+            log.info("scanning results:" + ret);
             return ret.contains(": OK") && !ret.contains("FOUND");
         } catch (Exception e) {
             log.error("clamScan verify error,file:" + filePath + " error:" + e.getMessage());
