@@ -39,8 +39,20 @@ public class AppConst {
      */
     public static final String SBOM_PUBLISH_ID_PREFIX = "sbom_publish_id_prefix_";
 
+    public static final String  VIRUS_SCAN_ID_PREFIX = "virus_scan_id_prefix_";
+
     /**
      * 正在发布中标签
      */
     public static final String SUCCESS_TAG = "success";
+
+    /**
+     * 失败标签
+     */
+    public static final String FAIL_TAG = "fail";
+
+    /**
+     * 正在扫描中
+     */
+    public static final String SCANNING = "scanning";
 }

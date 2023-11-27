@@ -9,11 +9,15 @@ import com.huawei.publish.model.PublishResult;
 import com.huawei.publish.model.RepoIndex;
 import com.huawei.publish.model.SbomPO;
 import com.huawei.publish.model.SbomResultPO;
+import com.huawei.publish.model.VirusScanPO;
+import com.huawei.publish.model.VirusScanResultPO;
 import com.huawei.publish.service.FileDownloadService;
 import com.huawei.publish.service.GiteeUploaderService;
 import com.huawei.publish.service.SbomService;
 import com.huawei.publish.service.VerifyService;
+import com.huawei.publish.service.VirusScanService;
 import com.huawei.publish.utils.CacheUtil;
+import com.huawei.publish.utils.FileDownloadUtil;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +53,9 @@ public class PublishVerifyController {
     private FileDownloadService fileDownloadService;
 
     private VerifyService verifyService;
+
+    @Autowired
+    private VirusScanService virusScanService;
 
     @Autowired
     private SbomService sbomService;
@@ -90,7 +97,7 @@ public class PublishVerifyController {
         }
         verifyService = new VerifyService(publishObject);
         List<FilePO> files = publishObject.getFiles();
-        String tempDirPath = getTempDirPath(publishObject.getTempDir());
+        String tempDirPath = FileDownloadUtil.getTempDirPath(publishObject.getTempDir());
         try {
             File tempDir = new File(tempDirPath);
             if (!tempDir.exists()) {
@@ -119,16 +126,6 @@ public class PublishVerifyController {
                 }
                 if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith(AppConst.SLASH)) {
                     tempDirPath = tempDirPath + AppConst.SLASH;
-                }
-                // clamAv扫描病毒
-                boolean clamScanResult = verifyService.clamScan(tempDirPath + fileName);
-                if (clamScanResult) {
-                    file.setScanResult("success");
-                } else {
-                    file.setScanResult("is infected");
-                    file.setPublishResult("failed");
-                    result.setResult("fail");
-                    continue;
                 }
                 String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
                     + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
@@ -191,6 +188,47 @@ public class PublishVerifyController {
         return result;
     }
 
+    /**
+     * VirusScan
+     *
+     * @param virusScan publish model
+     * @return PublishResult PublishResult
+     */
+    @RequestMapping(value = "/executeVirusScanning", method = RequestMethod.POST)
+    public String executeVirusScanning(@RequestBody VirusScanPO virusScan) {
+        publishTaskExecutor.execute(() -> {
+            VirusScanResultPO virusScanResult = virusScanService.virusScanning(virusScan);
+            CacheUtil.put(AppConst.VIRUS_SCAN_ID_PREFIX + virusScan.getScanId(), virusScanResult);
+        });
+        VirusScanResultPO virusScanResult = new VirusScanResultPO();
+        virusScanResult.setResult(AppConst.SCANNING);
+        CacheUtil.put(AppConst.VIRUS_SCAN_ID_PREFIX + virusScan.getScanId(), virusScanResult);
+        return "Start virus scan task success.";
+    }
+
+    /**
+     * queryVirusScanResult
+     *
+     * @param scanId publish model
+     * @return PublishResult PublishResult
+     */
+    @RequestMapping(value = "/queryVirusScanResult", method = RequestMethod.POST)
+    public VirusScanResultPO queryVirusScanResult(@RequestParam(value = "scanId", required = true) String scanId) {
+        if (Objects.isNull(CacheUtil.get(scanId))) {
+            return new VirusScanResultPO();
+        }
+        VirusScanResultPO result = (VirusScanResultPO) CacheUtil.get(AppConst.VIRUS_SCAN_ID_PREFIX + scanId);
+        if (!StringUtils.isEmpty(result.getResult()) && !AppConst.SCANNING.equals(result.getResult())) {
+            // 发布成功后缓存5分钟过期
+            CacheUtil.setCacheExpiration(scanId, 60*5);
+        }
+        return result;
+    }
+        /**
+     * 查询sbom发布结果
+     * @param sbomObject
+     * @return
+     */
     @RequestMapping(value = "/querySbomPublishResult", method = RequestMethod.POST)
     public SbomResultPO querySbomPublishResult(@RequestBody SbomPO sbomObject) {
         String sbomPublishId = AppConst.SBOM_PUBLISH_ID_PREFIX + sbomObject.getPublishId();
@@ -371,11 +409,5 @@ public class PublishVerifyController {
         return "";
     }
 
-    private String getTempDirPath(String tempDir) {
-        if (tempDir.startsWith(AppConst.SLASH)) {
-            return "/var/log" + tempDir;
-        } else {
-            return "/var/log/" + tempDir;
-        }
-    }
+
 }
