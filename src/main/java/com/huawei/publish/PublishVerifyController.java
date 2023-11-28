@@ -111,6 +111,11 @@ public class PublishVerifyController {
                     file.setPublishResult("skip");
                     continue;
                 }
+                if (StringUtils.isNotBlank(fileExistsFlag) && fileExistsFlag.contains("Connection timed out")){
+                    file.setPublishResult("failed");
+                    result.setResult("fail");
+                    continue;
+                }
                 fileDownloadService.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
                 String verifyMessage = verify(tempDirPath, file, fileName);
                 if (!StringUtils.isEmpty(verifyMessage)) {
