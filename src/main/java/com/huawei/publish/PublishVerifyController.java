@@ -135,8 +135,8 @@ public class PublishVerifyController {
                 }
                 String outPut = "success";
                 // 正式上生产后，放开。正式向服务器推送
-//                        verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
-//                    + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
+                        verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
+                    + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
                 if (!StringUtils.isEmpty(outPut)) {
                     file.setPublishResult("failed");
                     result.setResult("fail");
