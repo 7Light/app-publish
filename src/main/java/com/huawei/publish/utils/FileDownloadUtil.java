@@ -21,7 +21,7 @@ public class FileDownloadUtil {
      * @param dir      save path
      * @param fileName file name
      */
-    public static void downloadHttpUrl(String url, String dir, String fileName) {
+    public static String downloadHttpUrl(String url, String dir, String fileName) {
         try {
             File dirFile = new File(dir);
             if (!dirFile.exists()) {
@@ -48,8 +48,9 @@ public class FileDownloadUtil {
         } catch (Exception e) {
             e.printStackTrace();
             log.error("download error: " + e.getMessage());
+            return "fail";
         }
-
+        return "success";
     }
 
     public static String getTempDirPath(String tempDir) {

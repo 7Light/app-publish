@@ -48,7 +48,13 @@ public class VirusScanService {
 //                    continue;
 //                }
                 log.info("URL:"+file.getUrl()+"tempDirPath"+tempDirPath+"fileName"+fileName);
-                FileDownloadUtil.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
+                String downloadResult = FileDownloadUtil.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
+                if ("fail".equals(downloadResult)){
+                    detail.setVirusScanResult(AppConst.FAIL_TAG);
+                    virusScanResult.setResult(AppConst.FAIL_TAG);
+                    execCmd("rm -rf " + tempDirPath);
+                    continue;
+                }
                 File targetPathDir = new File(file.getTargetPath());
                 if (!targetPathDir.exists()) {
                     targetPathDir.mkdirs();
