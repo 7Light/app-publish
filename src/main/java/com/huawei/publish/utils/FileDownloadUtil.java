@@ -1,14 +1,21 @@
 package com.huawei.publish.utils;
 
 import com.huawei.publish.enums.AppConst;
+import com.huawei.publish.service.VerifyService;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 
+/**
+ * @author chentao
+ */
 public class FileDownloadUtil {
+    private static final Logger log = LoggerFactory.getLogger(FileDownloadUtil.class);
     /**
      * @param url      downloadUrl
      * @param dir      save path
@@ -40,6 +47,7 @@ public class FileDownloadUtil {
             fileOut.close();
         } catch (Exception e) {
             e.printStackTrace();
+            log.error("download error: " + e.getMessage());
         }
 
     }

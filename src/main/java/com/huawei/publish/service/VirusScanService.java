@@ -47,6 +47,7 @@ public class VirusScanService {
 //                    detail.setVirusScanResult("skip");
 //                    continue;
 //                }
+                log.info("URL:"+file.getUrl()+"tempDirPath"+tempDirPath+"fileName"+fileName);
                 FileDownloadUtil.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
                 File targetPathDir = new File(file.getTargetPath());
                 if (!targetPathDir.exists()) {
