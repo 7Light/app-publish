@@ -218,7 +218,7 @@ public class PublishVerifyController {
      * @param scanId publish model
      * @return PublishResult PublishResult
      */
-    @RequestMapping(value = "/queryVirusScanResult", method = RequestMethod.POST)
+    @RequestMapping(value = "/queryVirusScanResult", method = RequestMethod.GET)
     public VirusScanResultPO queryVirusScanResult(@RequestParam(value = "scanId", required = true) String scanId) {
         if (Objects.isNull(CacheUtil.get(AppConst.VIRUS_SCAN_ID_PREFIX + scanId))) {
             return new VirusScanResultPO();
