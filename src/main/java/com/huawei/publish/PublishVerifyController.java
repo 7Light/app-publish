@@ -132,12 +132,13 @@ public class PublishVerifyController {
                 if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith(AppConst.SLASH)) {
                     tempDirPath = tempDirPath + AppConst.SLASH;
                 }
-                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                    + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
-                if (!AppConst.EXISTS.equals(folderExistsFlag)) {
-                    verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                        + publishObject.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
-                }
+                //上生产前先注释
+//                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+//                    + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
+//                if (!AppConst.EXISTS.equals(folderExistsFlag)) {
+//                    verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+//                        + publishObject.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
+//                }
                 String outPut = "success";
 //                        verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
 //                        + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
