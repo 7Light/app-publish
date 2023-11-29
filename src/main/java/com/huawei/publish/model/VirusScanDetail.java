@@ -1,6 +1,13 @@
 package com.huawei.publish.model;
 
+/**
+ * @author chentao
+ */
 public class VirusScanDetail {
+    /**
+     * 扫描id(评审单id)
+     */
+    private String reviewId;
     /**
      * 文件名
      */
@@ -40,5 +47,13 @@ public class VirusScanDetail {
 
     public void setDetails(String details) {
         this.details = details;
+    }
+
+    public String getReviewId() {
+        return reviewId;
+    }
+
+    public void setReviewId(String reviewId) {
+        this.reviewId = reviewId;
     }
 }

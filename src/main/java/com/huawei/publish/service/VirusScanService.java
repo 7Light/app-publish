@@ -69,6 +69,8 @@ public class VirusScanService {
                     detail.setVirusScanResult(AppConst.FAIL_TAG);
                     virusScanResult.setResult(AppConst.FAIL_TAG);
                 }
+                detail.setFileName(fileName);
+                detail.setReviewId(virusScan.getScanId());
                 detail.setDetails(ret);
                 details.add(detail);
                 execCmd("rm -rf " + tempDirPath);
