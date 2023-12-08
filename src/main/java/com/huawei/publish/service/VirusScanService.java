@@ -40,13 +40,13 @@ public class VirusScanService {
             for (FilePO file : files) {
                 detail = new VirusScanDetail();
                 String fileName = file.getName();
-//                String fileExistsFlag = execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-//                    + virusScan.getRemoteRepoIp() + " \"[ -f " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
-//                if ("skip".equals(virusScan.getConflict()) && "exists".equals(fileExistsFlag)) {
-//                    // 发布件已存在跳过病毒扫描
-//                    detail.setVirusScanResult("skip");
-//                    continue;
-//                }
+                String fileExistsFlag = execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                    + virusScan.getRemoteRepoIp() + " \"[ -f " + file.getTargetPath() + "/" + fileName + " ]  &&  echo exists || echo does not exist\"");
+                if ("skip".equals(virusScan.getConflict()) && "exists".equals(fileExistsFlag)) {
+                    // 发布件已存在跳过病毒扫描
+                    detail.setVirusScanResult("skip");
+                    continue;
+                }
                 log.info("URL:"+file.getUrl()+"tempDirPath"+tempDirPath+"fileName"+fileName);
                 String downloadResult = FileDownloadUtil.downloadHttpUrl(file.getUrl(), tempDirPath, fileName);
                 if ("fail".equals(downloadResult)){

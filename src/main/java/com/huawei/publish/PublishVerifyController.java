@@ -133,15 +133,14 @@ public class PublishVerifyController {
                     tempDirPath = tempDirPath + AppConst.SLASH;
                 }
                 //上生产前先注释
-//                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-//                    + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
-//                if (!AppConst.EXISTS.equals(folderExistsFlag)) {
-//                    verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-//                        + publishObject.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
-//                }
-                String outPut = "";
-//                        verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
-//                        + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
+                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                    + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
+                if (!AppConst.EXISTS.equals(folderExistsFlag)) {
+                    verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
+                        + publishObject.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
+                }
+                String outPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
+                        + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
                 if (!StringUtils.isEmpty(outPut)) {
                     file.setPublishResult("failed");
                     result.setResult("fail");
@@ -227,7 +226,7 @@ public class PublishVerifyController {
         VirusScanResultPO result = (VirusScanResultPO) CacheUtil.get(AppConst.VIRUS_SCAN_ID_PREFIX + scanId);
         if (!StringUtils.isEmpty(result.getResult()) && !AppConst.SCANNING.equals(result.getResult())) {
             // 发布成功后缓存5分钟过期
-            CacheUtil.setCacheExpiration(scanId, 60*5);
+            CacheUtil.setCacheExpiration(AppConst.VIRUS_SCAN_ID_PREFIX + scanId, 60*5);
         }
         return result;
     }
