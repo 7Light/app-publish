@@ -5,7 +5,8 @@ USER root
 ENV USER root
 
 
-RUN yum -y update \
+RUN sed -i"s|repo.openeuler.org|mirrors.pku.edu.cn/openeuler|g" /etc/yum.repos.d/openEuler.repo && \
+yum -y update \
      && yum install -y wget \
      && yum install -y git \
          && yum install -y rpm \
