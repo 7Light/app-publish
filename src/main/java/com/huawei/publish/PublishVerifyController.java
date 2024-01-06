@@ -121,48 +121,11 @@ public class PublishVerifyController {
                 if (!StringUtils.isEmpty(verifyMessage)) {
                     file.setVerifyResult(verifyMessage);
                     result.setResult("fail");
-                    continue;
                 } else {
                     file.setVerifyResult("success");
                 }
-                File targetPathDir = new File(file.getTargetPath());
-                if (!targetPathDir.exists()) {
-                    targetPathDir.mkdirs();
-                }
-                if (!StringUtils.isEmpty(tempDirPath) && !tempDirPath.endsWith(AppConst.SLASH)) {
-                    tempDirPath = tempDirPath + AppConst.SLASH;
-                }
-                //上生产前先注释
-                String folderExistsFlag = verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                    + publishObject.getRemoteRepoIp() + " \"[ -d " + file.getTargetPath() + " ]  &&  echo exists || echo does not exist\"");
-                if (!AppConst.EXISTS.equals(folderExistsFlag)) {
-                    verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                        + publishObject.getRemoteRepoIp() + " \"mkdir -p " + file.getTargetPath() + "\"");
-                }
-                String outPut = verifyService.execCmd("scp -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no " + tempDirPath
-                        + fileName + " root@" + publishObject.getRemoteRepoIp() + ":" + file.getTargetPath() + AppConst.SLASH + fileName);
-                if (!StringUtils.isEmpty(outPut)) {
-                    file.setPublishResult("failed");
-                    result.setResult("fail");
-                    continue;
-                }
-                if (AppConst.EXISTS.equals(fileExistsFlag)) {
-                    file.setPublishResult("cover");
-                } else {
-                    file.setPublishResult("normal");
-                }
             }
             verifyService.execCmd("rm -rf " + tempDirPath);
-            if (!CollectionUtils.isEmpty(publishObject.getRepoIndexList())) {
-                for (RepoIndex repoIndex : publishObject.getRepoIndexList()) {
-                    if (repoIndex != null) {
-                        if ("createrepo".equals(repoIndex.getIndexType())) {
-                            verifyService.execCmd("ssh -i /var/log/ssh_key/private.key -o StrictHostKeyChecking=no root@"
-                                + publishObject.getRemoteRepoIp() + " \"createrepo -d " + repoIndex.getRepoPath() + "\"");
-                        }
-                    }
-                }
-            }
         } catch (IOException | InterruptedException e) {
             result.setResult("fail");
             result.setMessage("publish failed, " + e.getMessage());
